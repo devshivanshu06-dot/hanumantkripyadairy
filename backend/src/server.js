@@ -3,12 +3,14 @@ const cors = require('cors');
 require('dotenv').config();
 
 const connectDB = require('../config/mongodb');
+const { startCronJob } = require('./services/cronService');
 
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
+const addressRoutes = require('./routes/addressRoutes');
 
 const app = express();
 
@@ -25,6 +27,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/addresses', addressRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -60,4 +63,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  
+  // Start the background cron job for orders
+  startCronJob();
 });

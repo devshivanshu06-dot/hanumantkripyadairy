@@ -14,8 +14,21 @@ const userSchema = new mongoose.Schema({
   },
   address: {
     type: String,
-    required: false // Can be added during profile update or first checkout
+    required: false
   },
+  addresses: [{
+    label: { type: String, enum: ['Home', 'Work', 'Other'], default: 'Home' },
+    addressLine1: { type: String, required: true },
+    addressLine2: { type: String },
+    landmark: { type: String },
+    city: { type: String },
+    pincode: { type: String },
+    coordinates: {
+      latitude: { type: Number },
+      longitude: { type: Number }
+    },
+    isDefault: { type: Boolean, default: false }
+  }],
   role: {
     type: String,
     enum: ['customer', 'admin'],

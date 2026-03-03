@@ -13,6 +13,7 @@ router.post('/:id/cancel', auth, subscriptionController.cancelSubscription);
 
 // Admin routes
 router.get('/admin/all', adminAuth, subscriptionController.adminGetAllSubscriptions);
+router.post('/admin/trigger-cron', adminAuth, subscriptionController.triggerDailyCron);
 router.put('/:id/status', adminAuth, subscriptionController.adminUpdateSubscriptionStatus);
 
 module.exports = router;

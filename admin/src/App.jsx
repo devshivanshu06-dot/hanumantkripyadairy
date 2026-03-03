@@ -8,6 +8,7 @@ import Products from './components/Products/Products';
 import Subscriptions from './components/Subscriptions/Subscriptions';
 import Orders from './components/Orders/Orders';
 import Users from './components/Users/Users';
+import Ledger from './components/Ledger/Ledger';
 import Layout from './components/Layout/Layout';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
             <Route path="subscriptions" element={<Subscriptions />} />
             <Route path="orders" element={<Orders />} />
             <Route path="users" element={<Users />} />
+            <Route path="ledger" element={<Ledger />} />
           </Route>
         </Routes>
       </Router>

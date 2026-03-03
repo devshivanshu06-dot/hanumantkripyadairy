@@ -95,6 +95,8 @@ exports.getProfile = async (req, res) => {
       role: user.role,
       is_verified: user.is_verified,
       created_at: user.createdAt,
+      address: user.address,
+      addresses: user.addresses,
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -108,7 +110,10 @@ exports.adminLogin = async (req, res) => {
 
     console.log(phone,password,'kjd')
 
-    if (phone !== '9999999999' || password !== '55555') {
+    const adminPhone = process.env.ADMIN_PHONE || '9999999999';
+    const adminPassword = process.env.ADMIN_PASSWORD || '555555';
+
+    if (phone !== adminPhone || password !== adminPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 

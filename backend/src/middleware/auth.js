@@ -17,7 +17,7 @@ const verifyToken = async (req, res, next, requiredRole = null) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    if (!user.is_active) {
+    if (user.is_active === false) {
       return res.status(401).json({ error: 'Account deactivated' });
     }
 

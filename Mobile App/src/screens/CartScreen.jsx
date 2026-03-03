@@ -1,9 +1,8 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Image,
@@ -32,7 +31,13 @@ const CartScreen = ({ navigation }) => {
   };
 
   const handleCheckout = async () => {
-    if (!user.address) {
+    let resolvedAddress = user?.address;
+    if (user?.addresses && user.addresses.length > 0) {
+      const defAddr = user.addresses.find(a => a.isDefault) || user.addresses[0];
+      resolvedAddress = `${defAddr.addressLine1}, ${defAddr.addressLine2 ? defAddr.addressLine2 + ', ' : ''}${defAddr.city || ''} ${defAddr.pincode || ''}`.trim();
+    }
+
+    if (!resolvedAddress) {
       Alert.alert('Address Required', 'Please set your delivery address in profile', [
         { text: 'Go to Profile', onPress: () => navigation.navigate('Profile') },
         { text: 'Cancel', style: 'cancel' }
@@ -42,7 +47,7 @@ const CartScreen = ({ navigation }) => {
 
     setCheckingOut(true);
     try {
-      await orderAPI.createOrder(user.address);
+      await orderAPI.createOrder(resolvedAddress);
       Alert.alert('Success', 'Order placed successfully!', [
         { text: 'Track Order', onPress: () => navigation.navigate('Orders') }
       ]);
@@ -56,7 +61,7 @@ const CartScreen = ({ navigation }) => {
 
   if (loading && !cart) {
     return (
-      <View style={styles.loadingContainer}>
+      <View className="flex-1 justify-center items-center bg-white">
         <ActivityIndicator size="large" color="#FF6B6B" />
       </View>
     );
@@ -64,75 +69,87 @@ const CartScreen = ({ navigation }) => {
 
   const isEmpty = !cart || cart.items.length === 0;
 
+  // Resolve address to display
+  let displayAddress = user?.address || 'No address set. Please update in profile.';
+  if (user?.addresses && user.addresses.length > 0) {
+    const defAddr = user.addresses.find(a => a.isDefault) || user.addresses[0];
+    displayAddress = `${defAddr.label ? `[${defAddr.label}] ` : ''}${defAddr.addressLine1}, ${defAddr.addressLine2 ? defAddr.addressLine2 + ', ' : ''}${defAddr.city || ''} ${defAddr.pincode || ''}`.trim();
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView className="flex-1 bg-white">
+      {/* Header */}
+      <View className="flex-row justify-between items-center px-4 py-4 border-b border-gray-100">
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color="#1a1a1a" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Shopping Cart</Text>
-        <View style={{ width: 24 }} />
+        <Text className="text-lg font-bold text-gray-900">Shopping Cart</Text>
+        <View className="w-6" />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         {isEmpty ? (
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconWrap}>
+          <View className="flex-1 items-center justify-center pt-20 px-10">
+            <View className="w-32 h-32 rounded-full bg-red-50 flex items-center justify-center mb-6">
               <Icon name="shopping-cart" size={64} color="#FF6B6B" />
             </View>
-            <Text style={styles.emptyTitle}>Your cart is empty</Text>
-            <Text style={styles.emptySubtitle}>Looks like you haven't added anything yet</Text>
+            <Text className="text-2xl font-extrabold text-gray-900 mb-2">Your cart is empty</Text>
+            <Text className="text-sm text-gray-500 text-center mb-8 leading-5">
+              Looks like you haven't added anything yet
+            </Text>
             <TouchableOpacity 
-              style={styles.shopNowBtn}
+              className="bg-red-400 px-8 py-4 rounded-2xl"
               onPress={() => navigation.navigate('Home')}
             >
-              <Text style={styles.shopNowText}>Start Shopping</Text>
+              <Text className="text-white font-bold text-base">Start Shopping</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <>
-            <View style={styles.addressSection}>
-              <View style={styles.addressHeader}>
+            {/* Address Section */}
+            <View className="bg-white p-4 mx-4 mt-4 rounded-2xl border border-gray-100">
+              <View className="flex-row items-center mb-2">
                 <Icon name="location-on" size={20} color="#FF6B6B" />
-                <Text style={styles.addressTitle}>Delivery Address</Text>
+                <Text className="text-sm font-bold text-gray-900 ml-1">Delivery Address</Text>
               </View>
-              <Text style={styles.addressText} numberOfLines={2}>
-                {user?.address || 'No address set. Please update in profile.'}
+              <Text className="text-sm text-gray-500 leading-tight" numberOfLines={2}>
+                {displayAddress}
               </Text>
             </View>
 
-            <View style={styles.itemsContainer}>
+            {/* Cart Items */}
+            <View className="px-4 mt-6">
               {cart.items.map((item) => (
-                <View key={item.product._id} style={styles.cartItem}>
+                <View key={item.product._id} className="flex-row items-center py-3 border-b border-gray-50">
                   <Image 
                     source={{ uri: item.product.image || 'https://cdn-icons-png.flaticon.com/512/2917/2917633.png' }} 
-                    style={styles.itemImage} 
+                    className="w-20 h-20 rounded-xl bg-gray-50" 
                   />
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemName} numberOfLines={1}>{item.product.name}</Text>
-                    <Text style={styles.itemUnit}>₹{item.product.price} / {item.product.unit}</Text>
+                  <View className="flex-1 ml-4">
+                    <Text className="text-base font-bold text-gray-900 mb-1" numberOfLines={1}>{item.product.name}</Text>
+                    <Text className="text-sm text-gray-500 mb-3">₹{item.product.price} / {item.product.unit}</Text>
                     
-                    <View style={styles.qtyRow}>
-                      <View style={styles.stepper}>
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center bg-red-50 rounded-lg p-1">
                         <TouchableOpacity 
-                          style={styles.stepBtn}
+                          className="p-1"
                           onPress={() => handleUpdateQty(item.product._id, item.quantity - 1)}
                         >
                           <Icon name="remove" size={18} color="#FF6B6B" />
                         </TouchableOpacity>
-                        <Text style={styles.qtyText}>{item.quantity}</Text>
+                        <Text className="text-base font-bold text-gray-900 mx-3">{item.quantity}</Text>
                         <TouchableOpacity 
-                          style={styles.stepBtn}
+                          className="p-1"
                           onPress={() => handleUpdateQty(item.product._id, item.quantity + 1)}
                         >
                           <Icon name="add" size={18} color="#FF6B6B" />
                         </TouchableOpacity>
                       </View>
-                      <Text style={styles.itemTotal}>₹{item.product.price * item.quantity}</Text>
+                      <Text className="text-base font-bold text-gray-900">₹{item.product.price * item.quantity}</Text>
                     </View>
                   </View>
                   <TouchableOpacity 
-                    style={styles.removeBtn}
+                    className="p-2 ml-2"
                     onPress={() => handleUpdateQty(item.product._id, 0)}
                   >
                     <Icon name="delete-outline" size={22} color="#adb5bd" />
@@ -141,20 +158,21 @@ const CartScreen = ({ navigation }) => {
               ))}
             </View>
 
-            <View style={styles.billContainer}>
-              <Text style={styles.billTitle}>Bill Details</Text>
-              <View style={styles.billRow}>
-                <Text style={styles.billLabel}>Item Total</Text>
-                <Text style={styles.billValue}>₹{cart.totalAmount}</Text>
+            {/* Bill Details */}
+            <View className="p-4 mx-4 mt-6 bg-gray-50 rounded-2xl">
+              <Text className="text-base font-bold text-gray-900 mb-4">Bill Details</Text>
+              <View className="flex-row justify-between mb-3">
+                <Text className="text-sm text-gray-500">Item Total</Text>
+                <Text className="text-sm font-semibold text-gray-900">₹{cart.totalAmount}</Text>
               </View>
-              <View style={styles.billRow}>
-                <Text style={styles.billLabel}>Delivery Fee</Text>
-                <Text style={styles.billValueFree}>FREE</Text>
+              <View className="flex-row justify-between mb-3">
+                <Text className="text-sm text-gray-500">Delivery Fee</Text>
+                <Text className="text-sm font-bold text-green-500">FREE</Text>
               </View>
-              <View style={styles.divider} />
-              <View style={styles.billRow}>
-                <Text style={styles.grandTotalLabel}>To Pay</Text>
-                <Text style={styles.grandTotalValue}>₹{cart.totalAmount}</Text>
+              <View className="h-px bg-gray-200 my-3" />
+              <View className="flex-row justify-between">
+                <Text className="text-base font-extrabold text-gray-900">To Pay</Text>
+                <Text className="text-lg font-extrabold text-gray-900">₹{cart.totalAmount}</Text>
               </View>
             </View>
           </>
@@ -162,20 +180,20 @@ const CartScreen = ({ navigation }) => {
       </ScrollView>
 
       {!isEmpty && (
-        <View style={styles.footer}>
-          <View style={styles.stickyTotal}>
-            <Text style={styles.stickyPayable}>₹{cart.totalAmount}</Text>
-            <Text style={styles.stickyViewBill}>VIEW DETAILED BILL</Text>
+        <View className="absolute bottom-0 bg-white flex-row items-center px-4 pt-3 pb-8 border-t border-gray-100 justify-between w-full">
+          <View className="flex-1">
+            <Text className="text-xl font-extrabold text-gray-900">₹{cart.totalAmount}</Text>
+            <Text className="text-[10px] font-bold text-red-400 mt-0.5">VIEW DETAILED BILL</Text>
           </View>
           <TouchableOpacity 
-            style={styles.checkoutBtn}
+            className="flex-[1.5] bg-red-400 flex-row items-center justify-center py-4 rounded-2xl shadow-sm"
             onPress={handleCheckout}
             disabled={checkingOut}
           >
             {checkingOut ? (
               <ActivityIndicator color="white" size="small" />
             ) : (
-              <Text style={styles.checkoutBtnText}>Place Order (COD)</Text>
+              <Text className="text-white text-base font-bold mr-1">Place Order (COD)</Text>
             )}
             <Icon name="keyboard-arrow-right" size={24} color="white" />
           </TouchableOpacity>
@@ -184,256 +202,5 @@ const CartScreen = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f8f9fa',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  scrollContent: {
-    paddingBottom: 120,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    paddingHorizontal: 40,
-  },
-  emptyIconWrap: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#FFF0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  emptyTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1a1a1a',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 20,
-  },
-  shopNowBtn: {
-    backgroundColor: '#FF6B6B',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 16,
-  },
-  shopNowText: {
-    color: 'white',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  addressSection: {
-    backgroundColor: '#fff',
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  addressHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  addressTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginLeft: 4,
-  },
-  addressText: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 18,
-  },
-  itemsContainer: {
-    paddingHorizontal: 16,
-    marginTop: 24,
-  },
-  cartItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f8f9fa',
-  },
-  itemImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    backgroundColor: '#f8f9fa',
-  },
-  itemInfo: {
-    flex: 1,
-    marginLeft: 16,
-  },
-  itemName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 4,
-  },
-  itemUnit: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 12,
-  },
-  qtyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF0F0',
-    borderRadius: 8,
-    padding: 4,
-  },
-  stepBtn: {
-    padding: 4,
-  },
-  qtyText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginHorizontal: 12,
-  },
-  itemTotal: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  removeBtn: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  billContainer: {
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: 24,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 20,
-  },
-  billTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 16,
-  },
-  billRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  billLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  billValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  billValueFree: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#28a745',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e9ecef',
-    marginVertical: 12,
-  },
-  grandTotalLabel: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1a1a1a',
-  },
-  grandTotalValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1a1a1a',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    backgroundColor: '#fff',
-    width: width,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 32,
-    borderTopWidth: 1,
-    borderTopColor: '#f1f3f5',
-    justifyContent: 'space-between',
-  },
-  stickyTotal: {
-    flex: 1,
-  },
-  stickyPayable: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1a1a1a',
-  },
-  stickyViewBill: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FF6B6B',
-    marginTop: 2,
-  },
-  checkoutBtn: {
-    flex: 1.5,
-    backgroundColor: '#FF6B6B',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 16,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  checkoutBtnText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '700',
-    marginRight: 4,
-  },
-});
 
 export default CartScreen;

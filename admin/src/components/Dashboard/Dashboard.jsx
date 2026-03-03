@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../api/apiService';
 import { 
   Users, 
@@ -12,6 +13,8 @@ import {
 } from 'lucide-react';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const [isTriggering, setIsTriggering] = useState(false);
   const [stats, setStats] = useState({
     totalCustomers: 0,
     activeSubscriptions: 0,
@@ -58,6 +61,21 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       setLoading(false);
+    }
+  };
+
+  const handleProcessMilk = async () => {
+    const confirmTrigger = window.confirm("Are you sure you want to manually process today's deliveries?");
+    if (!confirmTrigger) return;
+    try {
+      setIsTriggering(true);
+      await adminAPI.triggerCron();
+      alert('Daily deliveries processed successfully!');
+      fetchDashboardData();
+    } catch (error) {
+      alert('Error processing deliveries');
+    } finally {
+      setIsTriggering(false);
     }
   };
 
@@ -170,13 +188,20 @@ const Dashboard = () => {
         <div className="space-y-6">
           <h2 className="text-xl font-bold">Quick Actions</h2>
           <div className="grid grid-cols-1 gap-4">
-            <button className="btn-primary w-full justify-center py-4 bg-gray-900 hover:bg-gray-800">
+            <button 
+              onClick={() => navigate('/products')}
+              className="btn-primary w-full justify-center py-4 bg-gray-900 hover:bg-gray-800"
+            >
               <Package className="w-5 h-5" />
-              Add New Product
+              Manage Products
             </button>
-            <button className="btn-primary w-full justify-center py-4">
+            <button 
+              onClick={handleProcessMilk}
+              disabled={isTriggering}
+              className={`btn-primary w-full justify-center py-4 ${isTriggering ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
               <Truck className="w-5 h-5" />
-              Process Today's Milk
+              {isTriggering ? 'Processing...' : "Process Today's Milk"}
             </button>
           </div>
         </div>

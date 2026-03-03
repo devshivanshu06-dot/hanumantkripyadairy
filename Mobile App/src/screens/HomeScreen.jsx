@@ -1,9 +1,8 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Image,
@@ -56,28 +55,30 @@ const HomeScreen = ({ navigation }) => {
 
   const renderProduct = ({ item }) => (
     <TouchableOpacity
-      style={styles.productCard}
+      className="bg-white rounded-3xl w-44 mr-5 p-4 shadow-sm border border-gray-100"
       onPress={() => navigation.navigate('Products', { product: item })}
       activeOpacity={0.9}
     >
-      <View style={styles.productImageContainer}>
+      <View className="h-28 bg-gray-50 rounded-2xl justify-center items-center mb-4 relative">
         <Image 
           source={{ uri: item.image || 'https://cdn-icons-png.flaticon.com/512/2917/2917633.png' }} 
-          style={styles.productImage} 
+          className="w-20 h-20 resize-contain" 
         />
         {item.isSubscriptionAvailable && (
-          <View style={styles.subBadge}>
-            <Text style={styles.subBadgeText}>Subscription</Text>
+          <View className="absolute top-2 right-2 bg-gray-900 px-2 py-1 rounded-md">
+            <Text className="text-white text-[10px] font-black tracking-wider uppercase">Sub</Text>
           </View>
         )}
       </View>
       
-      <View style={styles.productInfo}>
-        <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.productPrice}>₹{item.price} <Text style={styles.productUnit}>/ {item.unit}</Text></Text>
+      <View>
+        <Text className="text-sm font-extrabold text-gray-900 mb-1" numberOfLines={1}>{item.name}</Text>
+        <Text className="text-lg font-black text-red-400 mb-1">
+          ₹{item.price} <Text className="text-xs font-semibold text-gray-400">/ {item.unit}</Text>
+        </Text>
         
         <TouchableOpacity 
-          style={styles.addButton}
+          className="mt-3 bg-red-50 border-2 border-red-100 py-3 rounded-xl items-center active:bg-red-100"
           onPress={() => {
             if (item.isSubscriptionAvailable) {
               navigation.navigate('Products', { product: item });
@@ -86,7 +87,7 @@ const HomeScreen = ({ navigation }) => {
             }
           }}
         >
-          <Text style={styles.addButtonText}>
+          <Text className="text-red-500 text-xs font-black uppercase tracking-widest">
             {item.isSubscriptionAvailable ? 'View Plan' : 'Add to Cart'}
           </Text>
         </TouchableOpacity>
@@ -94,67 +95,79 @@ const HomeScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  let displayAddress = user?.address || 'Set your address';
+  if (user?.addresses && user.addresses.length > 0) {
+    const defAddr = user.addresses.find(a => a.isDefault) || user.addresses[0];
+    displayAddress = `${defAddr.label ? `[${defAddr.label}] ` : ''}${defAddr.addressLine1}, ${defAddr.city || ''}`.trim();
+  }
+
   if (loading && !refreshing) {
     return (
-      <View style={styles.loadingContainer}>
+      <View className="flex-1 justify-center items-center bg-white">
         <ActivityIndicator size="large" color="#FF6B6B" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex-1 bg-white">
       <StatusBar backgroundColor="white" barStyle="dark-content" />
       
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Namaste, {user?.name?.split(' ')[0]}! 👋</Text>
-          <Text style={styles.location}>
-            <Icon name="location-on" size={14} color="#FF6B6B" /> {user?.address || 'Set your address'}
+      <View className="flex-row justify-between items-center px-6 py-4 bg-white z-10">
+        <View className="flex-1 mr-4">
+          <Text className="text-2xl font-black text-gray-900 mb-1 tracking-tight">
+            Namaste, {user?.name?.split(' ')[0] || 'User'}! 👋
           </Text>
+          <View className="flex-row items-center">
+            <Icon name="location-on" size={16} color="#ef4444" />
+            <Text className="text-sm font-semibold text-gray-500 ml-1" numberOfLines={1}>
+              {displayAddress}
+            </Text>
+          </View>
         </View>
         <TouchableOpacity 
           onPress={() => navigation.navigate('Cart')}
-          style={styles.cartBtn}
+          className="w-12 h-12 bg-gray-50 rounded-full justify-center items-center border border-gray-100 active:bg-gray-100"
         >
-          <Icon name="shopping-cart" size={24} color="#1a1a1a" />
+          <Icon name="shopping-cart" size={24} color="#1f2937" />
           {cartCount > 0 && (
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{cartCount}</Text>
+            <View className="absolute -top-1 -right-1 bg-red-500 w-5 h-5 rounded-full justify-center items-center border-2 border-white">
+              <Text className="text-white text-[10px] font-black">{cartCount}</Text>
             </View>
           )}
         </TouchableOpacity>
       </View>
 
       <ScrollView
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF6B6B']} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF6B6B']} />}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* Active Subscriptions */}
         {subscriptions.filter(s => s.status === 'active').length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Daily Deliveries</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subsList}>
+          <View className="mt-6 mb-2">
+            <Text className="text-xl font-black text-gray-900 px-6 mb-5 tracking-tight">Your Daily Deliveries</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24 }}>
               {subscriptions.filter(s => s.status === 'active').map((sub) => (
                 <TouchableOpacity 
                   key={sub._id}
-                  style={styles.subCard}
+                  className="mr-4 rounded-3xl overflow-hidden shadow-sm"
                   onPress={() => navigation.navigate('Schedule')}
                 >
                   <LinearGradient
-                    colors={['#FF6B6B', '#FF8E8E']}
-                    style={styles.subGradient}
+                    colors={['#f43f5e', '#fb7185']}
+                    className="p-5 w-56"
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                   >
-                    <View style={styles.subRow}>
+                    <View className="flex-row items-center mb-3">
                       <Icon name="local-drink" size={24} color="white" />
-                      <Text style={styles.subName}>{sub.product.name}</Text>
+                      <Text className="text-white text-lg font-black ml-2 tracking-tight" numberOfLines={1}>{sub.product.name}</Text>
                     </View>
-                    <Text style={styles.subQuantity}>{sub.quantity} {sub.product.unit} • {sub.timeSlot}</Text>
+                    <Text className="text-white/90 text-sm font-bold bg-black/10 self-start px-3 py-1.5 rounded-xl">
+                      {sub.quantity} {sub.product.unit} • {sub.timeSlot}
+                    </Text>
                   </LinearGradient>
                 </TouchableOpacity>
               ))}
@@ -163,48 +176,54 @@ const HomeScreen = ({ navigation }) => {
         )}
 
         {/* Promo Banner */}
-        <TouchableOpacity style={styles.banner} activeOpacity={0.9}>
+        <TouchableOpacity className="mx-6 mt-6 rounded-3xl overflow-hidden shadow-sm active:opacity-90">
           <LinearGradient
-            colors={['#1a1a1a', '#4a4a4a']}
-            style={styles.bannerGradient}
+            colors={['#1f2937', '#374151']}
+            className="p-6 flex-row justify-between items-center"
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <View>
-              <Text style={styles.bannerTitle}>Fresh Milk Daily</Text>
-              <Text style={styles.bannerSubtitle}>Pure, Organic & Untouched</Text>
-              <View style={styles.bannerBtn}>
-                <Text style={styles.bannerBtnText}>Subscribe Now</Text>
+            <View className="flex-1">
+              <Text className="text-white text-2xl font-black mb-1 tracking-tight">Fresh Milk Daily</Text>
+              <Text className="text-gray-300 text-sm font-semibold mb-5">Pure, Organic & Untouched</Text>
+              <View className="bg-red-500 self-start px-5 py-2.5 rounded-xl">
+                <Text className="text-white text-xs font-black uppercase tracking-widest">Subscribe Now</Text>
               </View>
             </View>
-            <Image 
-              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2917/2917633.png' }}
-              style={styles.bannerImg}
-            />
+            <View className="bg-white/10 p-4 rounded-full ml-4">
+              <Image 
+                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2917/2917633.png' }}
+                className="w-16 h-16"
+              />
+            </View>
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Categories (Hardcoded for now as they are static) */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shop by Category</Text>
-          <View style={styles.categoriesGrid}>
+        {/* Categories (Static) */}
+        <View className="mt-10">
+          <Text className="text-xl font-black text-gray-900 px-6 mb-5 tracking-tight">Shop by Category</Text>
+          <View className="flex-row justify-between px-6">
             {['Milk', 'Curd', 'Paneer', 'Ghee'].map((cat) => (
-              <TouchableOpacity key={cat} style={styles.catItem}>
-                <View style={styles.catIconWrap}>
-                  <Icon name={cat === 'Milk' ? 'local-drink' : 'shopping-basket'} size={24} color="#FF6B6B" />
+              <TouchableOpacity 
+                key={cat} 
+                className="items-center active:opacity-75"
+                onPress={() => navigation.navigate('Category', { category: cat })}
+              >
+                <View className="w-16 h-16 rounded-2xl bg-orange-50 items-center justify-center mb-3 border border-orange-100 shadow-sm">
+                  <Icon name={cat === 'Milk' ? 'local-drink' : 'shopping-basket'} size={28} color="#f97316" />
                 </View>
-                <Text style={styles.catName}>{cat}</Text>
+                <Text className="text-sm font-extrabold text-gray-700 tracking-tight">{cat}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         {/* Products */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Popular Products</Text>
+        <View className="mt-10">
+          <View className="flex-row justify-between items-center px-6 mb-5">
+            <Text className="text-xl font-black text-gray-900 tracking-tight">Popular Products</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Products')}>
-              <Text style={styles.seeAllText}>See All</Text>
+              <Text className="text-red-500 font-bold tracking-tight">See All</Text>
             </TouchableOpacity>
           </View>
           <FlatList
@@ -213,250 +232,12 @@ const HomeScreen = ({ navigation }) => {
             keyExtractor={(item) => item._id}
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.productList}
+            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 10 }}
           />
         </View>
-        
-        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-  },
-  greeting: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1a1a1a',
-  },
-  location: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 2,
-  },
-  cartBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#f8f9fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cartBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#FF6B6B',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'white',
-  },
-  cartBadgeText: {
-    color: 'white',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  section: {
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    paddingHorizontal: 24,
-    marginBottom: 16,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingRight: 24,
-  },
-  seeAllText: {
-    color: '#FF6B6B',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  subsList: {
-    paddingHorizontal: 24,
-  },
-  subCard: {
-    marginRight: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    width: 220,
-  },
-  subGradient: {
-    padding: 16,
-  },
-  subRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  subName: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '700',
-    marginLeft: 8,
-  },
-  subQuantity: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
-  },
-  banner: {
-    marginHorizontal: 24,
-    marginTop: 24,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  bannerGradient: {
-    padding: 24,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  bannerTitle: {
-    color: 'white',
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  bannerSubtitle: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 14,
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  bannerBtn: {
-    backgroundColor: '#FF6B6B',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  bannerBtnText: {
-    color: 'white',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  bannerImg: {
-    width: 80,
-    height: 80,
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-  },
-  catItem: {
-    alignItems: 'center',
-  },
-  catIconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFF0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  catName: {
-    fontSize: 13,
-    color: '#4a4a4a',
-    fontWeight: '600',
-  },
-  productList: {
-    paddingHorizontal: 24,
-  },
-  productCard: {
-    width: 160,
-    marginRight: 16,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  productImageContainer: {
-    height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  productImage: {
-    width: 80,
-    height: 80,
-    resizeMode: 'contain',
-  },
-  subBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#1a1a1a',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  subBadgeText: {
-    color: 'white',
-    fontSize: 8,
-    fontWeight: '700',
-  },
-  productInfo: {
-    paddingBottom: 4,
-  },
-  productName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 4,
-  },
-  productPrice: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FF6B6B',
-  },
-  productUnit: {
-    fontSize: 11,
-    color: '#999',
-    fontWeight: '500',
-  },
-  addButton: {
-    marginTop: 12,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#FF6B6B',
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#FF6B6B',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-});
 
 export default HomeScreen;

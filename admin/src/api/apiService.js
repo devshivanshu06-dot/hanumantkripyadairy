@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:4000/api';
+const BASE_URL = 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -45,6 +45,7 @@ export const adminAPI = {
 
   // Subscriptions
   getSubscriptions: () => api.get('/subscriptions/admin/all'),
+  triggerCron: () => api.post('/subscriptions/admin/trigger-cron'),
   updateSubscriptionStatus: (id, status) => api.put(`/subscriptions/${id}/status`, { status }),
 
   // Orders

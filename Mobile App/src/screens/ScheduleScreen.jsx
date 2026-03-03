@@ -25,7 +25,7 @@ const ScheduleScreen = () => {
   const fetchSubscriptions = async () => {
     try {
       const response = await subscriptionAPI.getMySubscriptions();
-      setSubscriptions(response.data);
+      setSubscriptions(response.data.filter(s => s.status !== 'cancelled'));
     } catch (error) {
       console.error('Failed to fetch subscriptions', error);
     } finally {
@@ -61,6 +61,25 @@ const ScheduleScreen = () => {
       Alert.alert('Resumed', 'Your subscription is back to active!');
     } catch (error) {
       Alert.alert('Error', 'Failed to resume subscription');
+    }
+  };
+
+  const handleSkip = (id) => {
+    Alert.alert('Skip Tomorrow', 'Are you sure you want to skip tomorrow\'s delivery?', [
+      { text: 'Yes, Skip', onPress: () => skipTomorrow(id) },
+      { text: 'Cancel', style: 'cancel' }
+    ]);
+  };
+
+  const skipTomorrow = async (id) => {
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      await subscriptionAPI.skipDate(id, tomorrow.toISOString());
+      fetchSubscriptions();
+      Alert.alert('Skipped', 'Tomorrow\'s delivery has been skipped.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to skip delivery');
     }
   };
 
@@ -137,7 +156,7 @@ const ScheduleScreen = () => {
                   </TouchableOpacity>
                 )}
                 
-                <TouchableOpacity style={styles.skipBtn} onPress={() => Alert.alert('Skip Tomorrow', 'Skip tomorrow\'s delivery?')}>
+                <TouchableOpacity style={styles.skipBtn} onPress={() => handleSkip(sub._id)}>
                   <Icon name="event-busy" size={20} color="#666" />
                   <Text style={styles.skipBtnText}>Skip Tomorrow</Text>
                 </TouchableOpacity>

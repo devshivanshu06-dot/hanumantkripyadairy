@@ -14,6 +14,9 @@ import ScheduleScreen from './src/screens/ScheduleScreen';
 import OrderScreen from './src/screens/OrderScreen';
 import CartScreen from './src/screens/CartScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import AddressesScreen from './src/screens/AddressesScreen';
+import AddressScreen from './src/screens/AddressScreen';
+import CategoryScreen from './src/screens/CategoryScreen';
 
 // Import Contexts
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -91,6 +94,9 @@ const MainStack = () => {
           <Stack.Screen name="MainTabs" component={TabNavigator} />
           <Stack.Screen name="Products" component={ProductScreen} />
           <Stack.Screen name="Schedule" component={ScheduleScreen} />
+          <Stack.Screen name="Addresses" component={AddressesScreen} />
+          <Stack.Screen name="Address" component={AddressScreen} />
+          <Stack.Screen name="Category" component={CategoryScreen} />
         </>
       )}
     </Stack.Navigator>

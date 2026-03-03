@@ -1,7 +1,10 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://8cd3-2401-4900-1c69-4fa6-9d9a-5e11-6654-14d0.ngrok-free.app/api'; // Change to your local IP for physical devices
+// Change the production URL to your actual hosted backend domain
+const API_URL = __DEV__ 
+  ? 'http://192.168.0.6:5000/api'
+  : 'https://hanumantkripyadairy.com/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -33,6 +36,7 @@ export const authAPI = {
 export const productAPI = {
   getProducts: (params) => api.get('/products', { params }),
   getProduct: (id) => api.get(`/products/${id}`),
+  getProductsByCategory: (category) => api.get(`/products/category/${category}`),
 };
 
 export const cartAPI = {
@@ -54,6 +58,12 @@ export const subscriptionAPI = {
   resumeSubscription: (id) => api.post(`/subscriptions/${id}/resume`),
   skipDate: (id, date) => api.post(`/subscriptions/${id}/skip`, { date }),
   cancelSubscription: (id) => api.post(`/subscriptions/${id}/cancel`),
+};
+
+export const addressAPI = {
+  addAddress: (data) => api.post('/addresses', data),
+  updateAddress: (id, data) => api.put(`/addresses/${id}`, data),
+  deleteAddress: (id) => api.delete(`/addresses/${id}`),
 };
 
 export default api;

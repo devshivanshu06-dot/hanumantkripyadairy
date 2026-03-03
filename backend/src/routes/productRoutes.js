@@ -5,6 +5,7 @@ const { auth, adminAuth } = require('../middleware/auth');
 
 router.get('/', productController.getProducts);
 router.get('/:id', productController.getProduct);
+router.get('/category/:category', productController.getProductsByCategory);
 
 // Admin only routes
 router.post('/', adminAuth, productController.createProduct);

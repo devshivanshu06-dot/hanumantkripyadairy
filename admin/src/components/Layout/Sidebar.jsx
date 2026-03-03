@@ -19,8 +19,9 @@ const Sidebar = () => {
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/products', icon: Package, label: 'Products' },
     { path: '/subscriptions', icon: CalendarRange, label: 'Subscriptions' },
-    { path: '/orders', icon: ShoppingBag, label: 'Orders' },
+    { path: '/orders', icon: Truck, label: 'Deliveries' },
     { path: '/users', icon: Users, label: 'Customers' },
+    { path: '/ledger', icon: ShoppingBag, label: 'Ledger' },
   ];
 
   return (

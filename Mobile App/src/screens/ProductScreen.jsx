@@ -1,9 +1,8 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Image,
@@ -15,7 +14,7 @@ import { useCart } from '../context/CartContext';
 import { subscriptionAPI } from '../utils/api';
 
 const ProductScreen = ({ navigation, route }) => {
-  const { product } = route.params;
+  const product = route?.params?.product;
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -27,7 +26,7 @@ const ProductScreen = ({ navigation, route }) => {
     try {
       await addToCart(product._id, quantity);
       Alert.alert('Success', 'Added to cart successfully!', [
-        { text: 'View Cart', onPress: () => navigation.navigate('Cart') },
+        { text: 'View Cart', onPress: () => navigation.navigate('MainTabs', { screen: 'Cart' }) },
         { text: 'Continue Shopping', style: 'cancel' }
       ]);
     } catch (error) {
@@ -59,39 +58,60 @@ const ProductScreen = ({ navigation, route }) => {
     }
   };
 
+  if (!product) {
+    return (
+      <SafeAreaView className="flex-1 bg-white">
+        <View className="flex-row items-center p-4 border-b border-gray-100">
+          <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
+            <Icon name="arrow-back" size={24} color="#1a1a1a" />
+          </TouchableOpacity>
+          <Text className="text-xl font-bold ml-2 text-gray-900">Products</Text>
+        </View>
+        <View className="flex-1 justify-center items-center">
+          <Text className="text-base text-gray-500">Products screen coming soon.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+    <SafeAreaView className="flex-1 bg-white">
+      <View className="flex-row justify-between items-center p-4">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 bg-gray-50 rounded-full">
           <Icon name="arrow-back" size={24} color="#1a1a1a" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Product Details</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Cart')}>
+        <Text className="text-lg font-bold text-gray-900">Product Details</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Cart' })} className="p-2 bg-gray-50 rounded-full">
           <Icon name="shopping-cart" size={24} color="#1a1a1a" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.imageSection}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+        <View className="h-72 bg-gray-50 justify-center items-center rounded-b-3xl mb-4">
           <Image 
             source={{ uri: product.image || 'https://cdn-icons-png.flaticon.com/512/2917/2917633.png' }} 
-            style={styles.productImage} 
+            className="w-56 h-56 items-center justify-center resize-contain" 
           />
         </View>
 
-        <View style={styles.detailsSection}>
-          <Text style={styles.productName}>{product.name}</Text>
-          <Text style={styles.priceText}>₹{product.price} <Text style={styles.unitText}>/ {product.unit}</Text></Text>
-          <Text style={styles.descriptionText}>{product.description}</Text>
+        <View className="px-6 py-4">
+          <Text className="text-2xl font-extrabold text-gray-900 mb-2">{product.name}</Text>
+          <Text className="text-2xl font-extrabold text-red-400 mb-4">
+            ₹{product.price} <Text className="text-sm text-gray-400 font-medium">/ {product.unit}</Text>
+          </Text>
+          
+          <Text className="text-base text-gray-600 leading-6 mb-8">
+            {product.description || 'Fresh and pure dairy product sourced organically.'}
+          </Text>
 
-          <View style={styles.qtySection}>
-            <Text style={styles.sectionTitle}>Select Quantity</Text>
-            <View style={styles.stepper}>
-              <TouchableOpacity style={styles.stepBtn} onPress={() => setQuantity(Math.max(1, quantity - 1))}>
+          <View className="mb-8">
+            <Text className="text-base font-bold text-gray-900 mb-4">Select Quantity</Text>
+            <View className="flex-row items-center bg-gray-50 p-2 rounded-2xl w-40 justify-between">
+              <TouchableOpacity className="p-2 bg-white rounded-xl shadow-sm" onPress={() => setQuantity(Math.max(1, quantity - 1))}>
                 <Icon name="remove" size={24} color="#FF6B6B" />
               </TouchableOpacity>
-              <Text style={styles.qtyText}>{quantity}</Text>
-              <TouchableOpacity style={styles.stepBtn} onPress={() => setQuantity(quantity + 1)}>
+              <Text className="text-xl font-bold text-gray-900">{quantity}</Text>
+              <TouchableOpacity className="p-2 bg-white rounded-xl shadow-sm" onPress={() => setQuantity(quantity + 1)}>
                 <Icon name="add" size={24} color="#FF6B6B" />
               </TouchableOpacity>
             </View>
@@ -99,32 +119,32 @@ const ProductScreen = ({ navigation, route }) => {
 
           {product.isSubscriptionAvailable && (
             <>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Delivery Slot</Text>
-                <View style={styles.optionsRow}>
+              <View className="mb-6">
+                <Text className="text-base font-bold text-gray-900 mb-4">Delivery Slot</Text>
+                <View className="flex-row gap-3">
                   {['Morning', 'Evening'].map(slot => (
                     <TouchableOpacity 
                       key={slot} 
-                      style={[styles.optionBtn, timeSlot === slot && styles.optionBtnActive]}
+                      className={`flex-1 py-4 rounded-2xl border-2 items-center ${timeSlot === slot ? 'border-red-400 bg-red-50' : 'border-gray-100 bg-white'}`}
                       onPress={() => setTimeSlot(slot)}
                     >
-                      <Text style={[styles.optionText, timeSlot === slot && styles.optionTextActive]}>{slot}</Text>
+                      <Text className={`font-bold ${timeSlot === slot ? 'text-red-500' : 'text-gray-600'}`}>{slot}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Frequency</Text>
-                <View style={styles.optionsRow}>
+              <View className="mb-6">
+                <Text className="text-base font-bold text-gray-900 mb-4">Frequency</Text>
+                <View className="flex-row gap-3">
                   {['daily', 'alternate'].map(freq => (
                     <TouchableOpacity 
                       key={freq} 
-                      style={[styles.optionBtn, frequency === freq && styles.optionBtnActive]}
+                      className={`flex-1 py-4 rounded-2xl border-2 items-center ${frequency === freq ? 'border-red-400 bg-red-50' : 'border-gray-100 bg-white'}`}
                       onPress={() => setFrequency(freq)}
                     >
-                      <Text style={[styles.optionText, frequency === freq && styles.optionTextActive]}>
-                        {freq === 'daily' ? 'Daily' : 'Alternate Days'}
+                      <Text className={`font-bold ${frequency === freq ? 'text-red-500' : 'text-gray-600'}`}>
+                        {freq === 'daily' ? 'Daily' : 'Alternate'}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -135,30 +155,30 @@ const ProductScreen = ({ navigation, route }) => {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View className="absolute bottom-0 w-full p-6 bg-white border-t border-gray-100 shadow-lg">
         {product.isSubscriptionAvailable ? (
           <TouchableOpacity 
-            style={styles.primaryBtn} 
+            className="bg-red-400 py-4 rounded-2xl flex-row items-center justify-center shadow-lg shadow-red-200"
             onPress={handleSubscribe}
             disabled={loading}
           >
             {loading ? <ActivityIndicator color="white" /> : (
               <>
                 <Icon name="event-repeat" size={20} color="white" />
-                <Text style={styles.primaryBtnText}>Start Subscription</Text>
+                <Text className="text-white text-lg font-bold ml-2">Start Subscription</Text>
               </>
             )}
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
-            style={styles.primaryBtn} 
+            className="bg-red-400 py-4 rounded-2xl flex-row items-center justify-center shadow-lg shadow-red-200"
             onPress={handleAddToCart}
             disabled={loading}
           >
             {loading ? <ActivityIndicator color="white" /> : (
               <>
                 <Icon name="add-shopping-cart" size={20} color="white" />
-                <Text style={styles.primaryBtnText}>Add to Cart</Text>
+                <Text className="text-white text-lg font-bold ml-2">Add to Cart</Text>
               </>
             )}
           </TouchableOpacity>
@@ -167,144 +187,5 @@ const ProductScreen = ({ navigation, route }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f8f9fa',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  scrollContent: {
-    paddingBottom: 100,
-  },
-  imageSection: {
-    height: 300,
-    backgroundColor: '#f8f9fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  productImage: {
-    width: 250,
-    height: 250,
-    resizeMode: 'contain',
-  },
-  detailsSection: {
-    padding: 24,
-  },
-  productName: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#1a1a1a',
-    marginBottom: 8,
-  },
-  priceText: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FF6B6B',
-    marginBottom: 16,
-  },
-  unitText: {
-    fontSize: 14,
-    color: '#999',
-    fontWeight: '500',
-  },
-  descriptionText: {
-    fontSize: 15,
-    color: '#666',
-    lineHeight: 22,
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 16,
-  },
-  qtySection: {
-    marginBottom: 32,
-  },
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 16,
-    width: 160,
-    justifyContent: 'space-between',
-  },
-  qtyText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  optionsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  optionBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#e9ecef',
-    alignItems: 'center',
-    backgroundColor: 'white',
-  },
-  optionBtnActive: {
-    borderColor: '#FF6B6B',
-    backgroundColor: '#FFF0F0',
-  },
-  optionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#495057',
-  },
-  optionTextActive: {
-    color: '#FF6B6B',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    padding: 24,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#f1f3f5',
-  },
-  primaryBtn: {
-    backgroundColor: '#FF6B6B',
-    paddingVertical: 18,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryBtnText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-});
 
 export default ProductScreen;

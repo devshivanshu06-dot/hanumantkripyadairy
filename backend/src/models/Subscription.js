@@ -30,6 +30,9 @@ const subscriptionSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  endDate: {
+    type: Date
+  },
   status: {
     type: String,
     enum: ['active', 'paused', 'cancelled'],
@@ -43,6 +46,10 @@ const subscriptionSchema = new mongoose.Schema({
   }],
   lastOrderGeneratedAt: {
     type: Date
+  },
+  cancelAtEnd: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

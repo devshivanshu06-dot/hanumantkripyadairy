@@ -31,6 +31,20 @@ const Subscriptions = () => {
     }
   };
 
+  const handleTriggerCron = async () => {
+    const confirmTrigger = window.confirm("Are you sure you want to manually trigger the daily cron job?");
+    if (!confirmTrigger) return;
+    try {
+      setLoading(true);
+      await adminAPI.triggerCron();
+      alert('Daily cron triggered successfully! Orders have been generated.');
+      fetchSubscriptions();
+    } catch (error) {
+      alert('Error triggering cron');
+      setLoading(false);
+    }
+  };
+
   const filteredSubs = filter === 'all' 
     ? subscriptions 
     : subscriptions.filter(s => s.status === filter);
@@ -39,9 +53,18 @@ const Subscriptions = () => {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight">Active Subscriptions</h1>
-        <p className="text-gray-500 mt-1">Monitor and manage daily recurring milk deliveries.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight">Active Subscriptions</h1>
+          <p className="text-gray-500 mt-1">Monitor and manage daily recurring milk deliveries.</p>
+        </div>
+        <button
+          onClick={handleTriggerCron}
+          className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-xl font-bold shadow-sm flex items-center gap-2"
+        >
+          <Play size={18} />
+          Trigger Daily Cron
+        </button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">

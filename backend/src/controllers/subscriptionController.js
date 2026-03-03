@@ -1,4 +1,5 @@
 const subscriptionService = require('../services/subscriptionService');
+const { processDailySubscriptions } = require('../services/cronService');
 
 const createSubscription = async (req, res) => {
   try {
@@ -75,6 +76,15 @@ const adminUpdateSubscriptionStatus = async (req, res) => {
   }
 };
 
+const triggerDailyCron = async (req, res) => {
+  try {
+    const result = await processDailySubscriptions();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   createSubscription,
   getMySubscriptions,
@@ -83,5 +93,6 @@ module.exports = {
   skipDate,
   cancelSubscription,
   adminGetAllSubscriptions,
-  adminUpdateSubscriptionStatus
+  adminUpdateSubscriptionStatus,
+  triggerDailyCron
 };

@@ -46,11 +46,21 @@ const addSkipDate = async (subscriptionId, date) => {
 };
 
 const cancelSubscription = async (subscriptionId) => {
-  return await Subscription.findByIdAndUpdate(
-    subscriptionId,
-    { status: 'cancelled' },
-    { new: true }
-  );
+  const subscription = await Subscription.findById(subscriptionId);
+  if (!subscription) throw new Error('Subscription not found');
+  
+  // Keep active until the next 30-day cycle ends
+  const now = new Date();
+  const startDate = new Date(subscription.startDate);
+  
+  let endDate = new Date(startDate);
+  while (endDate <= now) {
+    endDate.setDate(endDate.getDate() + 30);
+  }
+  
+  subscription.cancelAtEnd = true;
+  subscription.endDate = endDate;
+  return await subscription.save();
 };
 
 module.exports = {
