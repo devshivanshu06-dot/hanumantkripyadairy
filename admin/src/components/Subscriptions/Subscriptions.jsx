@@ -32,14 +32,15 @@ const Subscriptions = () => {
   };
 
   const handleTriggerCron = async () => {
-    const confirmTrigger = window.confirm("Are you sure you want to manually trigger the daily cron job?");
-    if (!confirmTrigger) return;
+    // const confirmTrigger = window.confirm("Are you sure you want to manually trigger the daily cron job?");
+    // if (!confirmTrigger) return;
     try {
       setLoading(true);
       await adminAPI.triggerCron();
       alert('Daily cron triggered successfully! Orders have been generated.');
       fetchSubscriptions();
     } catch (error) {
+      console.error('Trigger Cron error:', error);
       alert('Error triggering cron');
       setLoading(false);
     }
@@ -60,10 +61,19 @@ const Subscriptions = () => {
         </div>
         <button
           onClick={handleTriggerCron}
-          className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-xl font-bold shadow-sm flex items-center gap-2"
+          disabled={loading}
+          className={`px-6 py-2.5 rounded-xl font-bold border-none transition-all duration-200 flex items-center gap-2 active:scale-95 shadow-sm active:shadow-none ${
+            loading 
+            ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+            : 'bg-red-500 text-white hover:bg-red-600'
+          }`}
         >
-          <Play size={18} />
-          Trigger Daily Cron
+          {loading ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+          ) : (
+            <Play size={18} fill="currentColor" />
+          )}
+          {loading ? 'Processing...' : 'Trigger Daily Cron'}
         </button>
       </div>
 
@@ -103,16 +113,16 @@ const Subscriptions = () => {
           </thead>
           <tbody>
             {filteredSubs.map((sub) => (
-              <tr key={sub._id}>
-                <td>
-                  <div className="font-semibold text-gray-900">{sub.user.name}</div>
-                  <div className="text-xs text-gray-500">{sub.user.phone}</div>
+              <tr key={sub._id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                <td className="py-4 px-6">
+                  <div className="font-bold text-gray-900">{sub.user?.name || 'Unknown'}</div>
+                  <div className="text-xs font-semibold text-gray-400">{sub.user?.phone}</div>
                 </td>
-                <td className="font-medium text-gray-700">{sub.product.name}</td>
-                <td className="font-bold">{sub.quantity} {sub.product.unit}</td>
-                <td className="capitalize">{sub.frequency}</td>
-                <td>{sub.timeSlot}</td>
-                <td>
+                <td className="py-4 px-6 font-bold text-gray-800">{sub.product?.name}</td>
+                <td className="py-4 px-6 font-black text-gray-900">{sub.quantity} {sub.product?.unit}</td>
+                <td className="py-4 px-6 capitalize font-semibold text-gray-700">{sub.frequency}</td>
+                <td className="py-4 px-6 font-medium text-gray-600">{sub.timeSlot}</td>
+                <td className="py-4 px-6">
                   <span className={`badge ${
                     sub.status === 'active' ? 'bg-success bg-opacity-10 text-success' :
                     sub.status === 'paused' ? 'bg-warning bg-opacity-10 text-orange-600' :
@@ -121,16 +131,16 @@ const Subscriptions = () => {
                     {sub.status}
                   </span>
                 </td>
-                <td>
+                <td className="py-4 px-6">
                   <div className="flex items-center gap-2">
                     {sub.status === 'paused' ? (
-                      <button onClick={() => handleUpdateStatus(sub._id, 'active')} className="p-2 text-success hover:bg-green-50 rounded-lg" title="Resume"><Play size={18} /></button>
+                      <button onClick={() => handleUpdateStatus(sub._id, 'active')} className="p-2 text-success hover:bg-green-50 rounded-lg transition-colors border-none" title="Resume"><Play size={18} fill="currentColor" /></button>
                     ) : sub.status === 'active' ? (
-                      <button onClick={() => handleUpdateStatus(sub._id, 'paused')} className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg" title="Pause"><Pause size={18} /></button>
+                      <button onClick={() => handleUpdateStatus(sub._id, 'paused')} className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors border-none" title="Pause"><Pause size={18} fill="currentColor" /></button>
                     ) : null}
                     {sub.status !== 'cancelled' && (
-                      <button onClick={() => handleUpdateStatus(sub._id, 'cancelled')} className="p-2 text-danger hover:bg-red-50 rounded-lg" title="Cancel"><XCircle size={18} /></button>
-                    )}
+                      <button onClick={() => handleUpdateStatus(sub._id, 'cancelled')} className="p-2 text-danger hover:bg-red-50 rounded-lg transition-colors border-none" title="Cancel"><XCircle size={18} fill="currentColor" /></button>
+                    ) }
                   </div>
                 </td>
               </tr>

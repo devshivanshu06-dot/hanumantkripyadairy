@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const Subscription = require('../models/Subscription');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const User = require('../models/User');
 const mongoose = require('mongoose');
 
 const processDailySubscriptions = async () => {
@@ -12,9 +13,14 @@ const processDailySubscriptions = async () => {
     session.startTransaction();
     
     const now = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(now.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
+    // Delivery target: if run before 4 AM, target today. Otherwise target tomorrow.
+    const targetDate = new Date(now);
+    if (now.getHours() >= 4) {
+      targetDate.setDate(now.getDate() + 1);
+    }
+    targetDate.setHours(0, 0, 0, 0);
+    
+    console.log(`Target delivery date for this run: ${targetDate.toDateString()}`);
     
     // 1. Cancel subscriptions that have reached their end date
     await Subscription.updateMany(
@@ -36,10 +42,10 @@ const processDailySubscriptions = async () => {
     // Simplification: just find all active subscriptions
     const activeSubs = await Subscription.find({ 
       status: 'active',
-      startDate: { $lte: tomorrow },
+      startDate: { $lte: targetDate },
       $or: [
         { pausedUntil: null },
-        { pausedUntil: { $lt: tomorrow } }
+        { pausedUntil: { $lt: targetDate } }
       ]
     }).populate('product').session(session);
 
@@ -47,24 +53,24 @@ const processDailySubscriptions = async () => {
       // Check if tomorrow is a skip date
       const isSkipDate = sub.skipDates.some(skip => {
         const d = new Date(skip);
-        return d.toDateString() === tomorrow.toDateString();
+        return d.toDateString() === targetDate.toDateString();
       });
 
       if (isSkipDate) continue;
 
       // Logic for alternate days
       if (sub.frequency === 'alternate') {
-        const daysDiff = Math.floor((tomorrow - new Date(sub.startDate)) / (1000 * 60 * 60 * 24));
+        const daysDiff = Math.floor((targetDate - new Date(sub.startDate)) / (1000 * 60 * 60 * 24));
         if (daysDiff % 2 !== 0) continue; // Skip alternate days
       }
 
       // Check if we already generated for tomorrow
-      if (sub.lastOrderGeneratedAt && new Date(sub.lastOrderGeneratedAt).toDateString() === tomorrow.toDateString()) {
+      if (sub.lastOrderGeneratedAt && new Date(sub.lastOrderGeneratedAt).toDateString() === targetDate.toDateString()) {
         continue;
       }
 
       // We need to fetch the User to get their primary address for deliveryAddress
-      const userDoc = await mongoose.model('User').findById(sub.user).session(session);
+      const userDoc = await User.findById(sub.user).session(session);
       let primaryAddress = userDoc?.address || 'No Default Address';
       if (userDoc?.addresses && userDoc.addresses.length > 0) {
         const defAddr = userDoc.addresses.find(a => a.isDefault) || userDoc.addresses[0];
@@ -88,7 +94,7 @@ const processDailySubscriptions = async () => {
 
       await newOrder.save({ session });
       
-      sub.lastOrderGeneratedAt = tomorrow;
+      sub.lastOrderGeneratedAt = targetDate;
       await sub.save({ session });
     }
 

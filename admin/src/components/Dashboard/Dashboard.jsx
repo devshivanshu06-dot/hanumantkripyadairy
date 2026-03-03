@@ -40,7 +40,7 @@ const Dashboard = () => {
       const subscriptions = subsRes.data || [];
       const orders = ordersRes.data || [];
 
-      const pending = orders.filter(o => o.status === 'pending').length;
+      const pending = orders.filter(o => o.status === 'Pending').length;
       const activeSubs = subscriptions.filter(s => s.status === 'active').length;
       
       // Calculate today's revenue (mock logic if no timestamp filtering on backend yet)
@@ -170,8 +170,8 @@ const Dashboard = () => {
                     <td className="font-bold text-gray-900">₹{order.totalAmount}</td>
                     <td>
                       <span className={`badge ${
-                        order.status === 'delivered' ? 'bg-success bg-opacity-10 text-success' :
-                        order.status === 'pending' ? 'bg-warning bg-opacity-10 text-orange-600' :
+                        order.status === 'Delivered' ? 'bg-success bg-opacity-10 text-success' :
+                        order.status === 'Pending' ? 'bg-warning bg-opacity-10 text-orange-600' :
                         'bg-blue-600 bg-opacity-10 text-blue-600'
                       }`}>
                         {order.status}

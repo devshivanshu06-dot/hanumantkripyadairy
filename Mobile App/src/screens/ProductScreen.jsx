@@ -17,6 +17,7 @@ const ProductScreen = ({ navigation, route }) => {
   const product = route?.params?.product;
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [isSubscriptionSelected, setIsSubscriptionSelected] = useState(product.isSubscriptionAvailable);
   const [loading, setLoading] = useState(false);
   const [timeSlot, setTimeSlot] = useState('Morning');
   const [frequency, setFrequency] = useState('daily');
@@ -86,7 +87,7 @@ const ProductScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
         <View className="h-72 bg-gray-50 justify-center items-center rounded-b-3xl mb-4">
           <Image 
             source={{ uri: product.image || 'https://cdn-icons-png.flaticon.com/512/2917/2917633.png' }} 
@@ -95,29 +96,56 @@ const ProductScreen = ({ navigation, route }) => {
         </View>
 
         <View className="px-6 py-4">
-          <Text className="text-2xl font-extrabold text-gray-900 mb-2">{product.name}</Text>
-          <Text className="text-2xl font-extrabold text-red-400 mb-4">
-            ₹{product.price} <Text className="text-sm text-gray-400 font-medium">/ {product.unit}</Text>
-          </Text>
+          <View className="flex-row justify-between items-start mb-2">
+            <View className="flex-1">
+              <Text className="text-2xl font-extrabold text-gray-900 mb-1">{product.name}</Text>
+              <Text className="text-gray-500 font-medium capitalize">{product.category}</Text>
+            </View>
+            <Text className="text-2xl font-extrabold text-red-500">₹{product.price}</Text>
+          </View>
+          
+          <Text className="text-sm text-gray-400 font-bold mb-6">/ {product.unit}</Text>
           
           <Text className="text-base text-gray-600 leading-6 mb-8">
             {product.description || 'Fresh and pure dairy product sourced organically.'}
           </Text>
 
+          {product.isSubscriptionAvailable && (
+            <View className="mb-8 p-1 bg-gray-100 rounded-2xl flex-row">
+              <TouchableOpacity 
+                className={`flex-1 py-3 rounded-xl items-center ${!isSubscriptionSelected ? 'bg-white shadow-sm' : ''}`}
+                onPress={() => setIsSubscriptionSelected(false)}
+              >
+                <Text className={`font-bold ${!isSubscriptionSelected ? 'text-gray-900' : 'text-gray-500'}`}>One-time</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                className={`flex-1 py-3 rounded-xl items-center ${isSubscriptionSelected ? 'bg-white shadow-sm' : ''}`}
+                onPress={() => setIsSubscriptionSelected(true)}
+              >
+                <View className="flex-row items-center gap-1">
+                  <Icon name="repeat" size={16} color={isSubscriptionSelected ? '#EF4444' : '#6B7280'} />
+                  <Text className={`font-bold ${isSubscriptionSelected ? 'text-gray-900' : 'text-gray-500'}`}>Daily Refresh</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View className="mb-8">
-            <Text className="text-base font-bold text-gray-900 mb-4">Select Quantity</Text>
-            <View className="flex-row items-center bg-gray-50 p-2 rounded-2xl w-40 justify-between">
+            <Text className="text-base font-bold text-gray-900 mb-4">
+              {isSubscriptionSelected ? 'Quantity per day' : 'Select Quantity'}
+            </Text>
+            <View className="flex-row items-center bg-gray-50 p-2 rounded-2xl w-40 justify-between border border-gray-100">
               <TouchableOpacity className="p-2 bg-white rounded-xl shadow-sm" onPress={() => setQuantity(Math.max(1, quantity - 1))}>
-                <Icon name="remove" size={24} color="#FF6B6B" />
+                <Icon name="remove" size={24} color="#EF4444" />
               </TouchableOpacity>
               <Text className="text-xl font-bold text-gray-900">{quantity}</Text>
               <TouchableOpacity className="p-2 bg-white rounded-xl shadow-sm" onPress={() => setQuantity(quantity + 1)}>
-                <Icon name="add" size={24} color="#FF6B6B" />
+                <Icon name="add" size={24} color="#EF4444" />
               </TouchableOpacity>
             </View>
           </View>
 
-          {product.isSubscriptionAvailable && (
+          {isSubscriptionSelected && (
             <>
               <View className="mb-6">
                 <Text className="text-base font-bold text-gray-900 mb-4">Delivery Slot</Text>
@@ -128,7 +156,10 @@ const ProductScreen = ({ navigation, route }) => {
                       className={`flex-1 py-4 rounded-2xl border-2 items-center ${timeSlot === slot ? 'border-red-400 bg-red-50' : 'border-gray-100 bg-white'}`}
                       onPress={() => setTimeSlot(slot)}
                     >
-                      <Text className={`font-bold ${timeSlot === slot ? 'text-red-500' : 'text-gray-600'}`}>{slot}</Text>
+                      <View className="flex-row items-center gap-2">
+                        <Icon name={slot === 'Morning' ? 'wb-sunny' : 'nights-stay'} size={18} color={timeSlot === slot ? '#EF4444' : '#6B7280'} />
+                        <Text className={`font-bold ${timeSlot === slot ? 'text-red-500' : 'text-gray-600'}`}>{slot}</Text>
+                      </View>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -137,14 +168,17 @@ const ProductScreen = ({ navigation, route }) => {
               <View className="mb-6">
                 <Text className="text-base font-bold text-gray-900 mb-4">Frequency</Text>
                 <View className="flex-row gap-3">
-                  {['daily', 'alternate'].map(freq => (
+                  {[
+                    { id: 'daily', label: 'Every Day' },
+                    { id: 'alternate', label: 'Alternate Days' }
+                  ].map(item => (
                     <TouchableOpacity 
-                      key={freq} 
-                      className={`flex-1 py-4 rounded-2xl border-2 items-center ${frequency === freq ? 'border-red-400 bg-red-50' : 'border-gray-100 bg-white'}`}
-                      onPress={() => setFrequency(freq)}
+                      key={item.id} 
+                      className={`flex-1 py-4 rounded-2xl border-2 items-center tracking-tight ${frequency === item.id ? 'border-red-400 bg-red-50' : 'border-gray-100 bg-white'}`}
+                      onPress={() => setFrequency(item.id)}
                     >
-                      <Text className={`font-bold ${frequency === freq ? 'text-red-500' : 'text-gray-600'}`}>
-                        {freq === 'daily' ? 'Daily' : 'Alternate'}
+                      <Text className={`font-bold ${frequency === item.id ? 'text-red-500' : 'text-gray-600'}`}>
+                        {item.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -155,34 +189,21 @@ const ProductScreen = ({ navigation, route }) => {
         </View>
       </ScrollView>
 
-      <View className="absolute bottom-0 w-full p-6 bg-white border-t border-gray-100 shadow-lg">
-        {product.isSubscriptionAvailable ? (
-          <TouchableOpacity 
-            className="bg-red-400 py-4 rounded-2xl flex-row items-center justify-center shadow-lg shadow-red-200"
-            onPress={handleSubscribe}
-            disabled={loading}
-          >
-            {loading ? <ActivityIndicator color="white" /> : (
-              <>
-                <Icon name="event-repeat" size={20} color="white" />
-                <Text className="text-white text-lg font-bold ml-2">Start Subscription</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity 
-            className="bg-red-400 py-4 rounded-2xl flex-row items-center justify-center shadow-lg shadow-red-200"
-            onPress={handleAddToCart}
-            disabled={loading}
-          >
-            {loading ? <ActivityIndicator color="white" /> : (
-              <>
-                <Icon name="add-shopping-cart" size={20} color="white" />
-                <Text className="text-white text-lg font-bold ml-2">Add to Cart</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        )}
+      <View className="absolute bottom-0 w-full p-6 bg-white border-t border-gray-100">
+        <TouchableOpacity 
+          className="bg-red-500 py-4 rounded-2xl flex-row items-center justify-center shadow-lg shadow-red-200 active:scale-95 transition-transform"
+          onPress={isSubscriptionSelected ? handleSubscribe : handleAddToCart}
+          disabled={loading}
+        >
+          {loading ? <ActivityIndicator color="white" /> : (
+            <>
+              <Icon name={isSubscriptionSelected ? 'event-repeat' : 'add-shopping-cart'} size={22} color="white" />
+              <Text className="text-white text-lg font-bold ml-2">
+                {isSubscriptionSelected ? 'Subscribe Now' : 'Add to Cart'}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
