@@ -3,12 +3,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './utils/ProtectedRoute';
 import Login from './components/Auth/Login';
-import Dashboard from './components/Dashboard/Dashboard';
 import Products from './components/Products/Products';
 import Subscriptions from './components/Subscriptions/Subscriptions';
 import Orders from './components/Orders/Orders';
 import Users from './components/Users/Users';
 import Ledger from './components/Ledger/Ledger';
+import Banners from './components/Banners/Banners';
+import Dashboard from './components/Dashboard/Dashboard';
 import Layout from './components/Layout/Layout';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
             <Route path="orders" element={<Orders />} />
             <Route path="users" element={<Users />} />
             <Route path="ledger" element={<Ledger />} />
+            <Route path="banners" element={<Banners />} />
           </Route>
         </Routes>
       </Router>

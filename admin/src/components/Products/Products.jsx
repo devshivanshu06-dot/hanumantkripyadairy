@@ -14,7 +14,6 @@ const Products = () => {
     unit: '',
     category: 'milk',
     stock: '',
-    isSubscriptionAvailable: false,
     image: ''
   });
 
@@ -67,7 +66,6 @@ const Products = () => {
       unit: product.unit,
       category: product.category,
       stock: product.stock,
-      isSubscriptionAvailable: product.isSubscriptionAvailable,
       image: product.image
     });
     setShowModal(true);
@@ -92,7 +90,6 @@ const Products = () => {
       unit: '',
       category: 'milk',
       stock: '',
-      isSubscriptionAvailable: false,
       image: ''
     });
     setEditingProduct(null);
@@ -134,7 +131,6 @@ const Products = () => {
               <th>Category</th>
               <th>Price</th>
               <th>Stock</th>
-              <th>Type</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -151,13 +147,6 @@ const Products = () => {
                   <span className={`font-semibold ${product.stock < 10 ? 'text-danger' : 'text-gray-700'}`}>
                     {product.stock}
                   </span>
-                </td>
-                <td>
-                  {product.isSubscriptionAvailable ? (
-                    <span className="badge bg-purple-100 text-purple-700">Subscripable</span>
-                  ) : (
-                    <span className="badge bg-gray-100 text-gray-600">One-time</span>
-                  )}
                 </td>
                 <td>
                   <div className="flex items-center gap-3">
@@ -220,11 +209,6 @@ const Products = () => {
               <div className="space-y-1">
                 <label className="text-sm font-semibold">Image URL</label>
                 <input name="image" value={formData.image} onChange={handleInputChange} className="w-full" placeholder="https://..." />
-              </div>
-
-              <div className="flex items-center gap-2 py-2">
-                <input type="checkbox" name="isSubscriptionAvailable" checked={formData.isSubscriptionAvailable} onChange={handleInputChange} className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary" id="subAvailable" />
-                <label htmlFor="subAvailable" className="text-sm font-semibold cursor-pointer">Available for Daily Subscription</label>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4">

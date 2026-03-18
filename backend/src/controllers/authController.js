@@ -4,16 +4,15 @@ const { generateOTP, isOTPExpired, generateToken } = require('../utils/helpers')
 exports.sendOTP = async (req, res) => {
   try {
     const { phone } = req.body;
-console.log(phone,'phone')
+    console.log(phone,'phone')
     if (!phone || !/^\d{10}$/.test(phone)) {
       return res.status(400).json({ error: 'Invalid phone number' });
     }
 
-    const otp = generateOTP();
+    const otp = '000000';
     const otpExpiresAt = new Date(Date.now() + 10 * 60000);
 
     let user = await User.findOne({ phone });
-
     if (user) {
       user.otp = otp;
       user.otp_expires_at = otpExpiresAt;

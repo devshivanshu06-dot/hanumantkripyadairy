@@ -40,10 +40,14 @@ const orderSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  deliveryCoordinates: {
+    latitude: Number,
+    longitude: Number
+  },
   orderType: {
     type: String,
-    enum: ['One-time', 'Subscription-Generated'],
-    default: 'One-time'
+    enum: ['Subscription-Generated'],
+    default: 'Subscription-Generated'
   },
   subscriptionRef: {
     type: mongoose.Schema.Types.ObjectId,

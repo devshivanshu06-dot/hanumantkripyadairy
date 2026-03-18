@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://hanumantkripyadairy-backend-mrcrafter32-mrcrafter32s-projects.vercel.app/api';
+const BASE_URL = 'http://localhost:5000/api';
+// const BASE_URL = 'https://hanumantkripyadairy-backend-mrcrafter32-mrcrafter32s-projects.vercel.app/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -48,12 +49,22 @@ export const adminAPI = {
   triggerCron: () => api.post('/subscriptions/admin/trigger-cron'),
   updateSubscriptionStatus: (id, status) => api.put(`/subscriptions/${id}/status`, { status }),
 
+
   // Orders
   getOrders: () => api.get('/orders/admin/all'),
   updateOrderStatus: (id, status) => api.put(`/orders/${id}/status`, { status }),
 
   // Customers
   getCustomers: () => api.get('/auth/admin/users'), // Need to add this route or similar
+
+  // Banners
+  getBanners: () => api.get('/banners'),
+  createBanner: (data) => api.post('/banners', data),
+  updateBanner: (id, data) => api.put(`/banners/${id}`, data),
+  deleteBanner: (id) => api.delete(`/banners/${id}`),
+
+  // Ledger
+  addLedgerEntry: (data) => api.post('/ledger', data),
 };
 
 export default api;

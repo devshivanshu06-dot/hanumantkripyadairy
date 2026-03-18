@@ -72,9 +72,17 @@ const processDailySubscriptions = async () => {
       // We need to fetch the User to get their primary address for deliveryAddress
       const userDoc = await User.findById(sub.user).session(session);
       let primaryAddress = userDoc?.address || 'No Default Address';
+      let coords = null;
+
       if (userDoc?.addresses && userDoc.addresses.length > 0) {
         const defAddr = userDoc.addresses.find(a => a.isDefault) || userDoc.addresses[0];
         primaryAddress = `${defAddr.addressLine1}, ${defAddr.addressLine2 ? defAddr.addressLine2 + ', ' : ''}${defAddr.city || ''} ${defAddr.pincode || ''}`.trim();
+        if (defAddr.coordinates && defAddr.coordinates.latitude) {
+            coords = {
+                latitude: defAddr.coordinates.latitude,
+                longitude: defAddr.coordinates.longitude
+            };
+        }
       }
 
       // Create an order for tomorrow
@@ -88,6 +96,7 @@ const processDailySubscriptions = async () => {
         totalAmount: sub.product.price * sub.quantity,
         status: 'Pending',
         deliveryAddress: primaryAddress,
+        deliveryCoordinates: coords,
         orderType: 'Subscription-Generated',
         subscriptionRef: sub._id
       });

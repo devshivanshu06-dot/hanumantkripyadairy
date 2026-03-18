@@ -7,10 +7,10 @@ const { startCronJob } = require('./services/cronService');
 
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
-const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const addressRoutes = require('./routes/addressRoutes');
+const bannerRoutes = require('./routes/bannerRoutes');
 
 const app = express();
 
@@ -30,10 +30,10 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/addresses', addressRoutes);
+app.use('/api/banners', bannerRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

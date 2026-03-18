@@ -2,7 +2,7 @@ const User = require('../models/User');
 
 exports.addAddress = async (req, res) => {
   try {
-    const { label, addressLine1, addressLine2, landmark, city, pincode, isDefault, coordinates } = req.body;
+    const { label, addressLine1, addressLine2, landmark, city, state, pincode, isDefault, coordinates } = req.body;
     const user = await User.findById(req.user.id);
     
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -17,6 +17,7 @@ exports.addAddress = async (req, res) => {
       addressLine2,
       landmark,
       city,
+      state,
       pincode,
       coordinates,
       isDefault: isDefault || user.addresses.length === 0
@@ -27,7 +28,7 @@ exports.addAddress = async (req, res) => {
     // Update the legacy string address to match the default
     const defAddr = user.addresses.find(a => a.isDefault);
     if (defAddr) {
-      user.address = `${defAddr.addressLine1}, ${defAddr.addressLine2 ? defAddr.addressLine2 + ', ' : ''}${defAddr.landmark ? defAddr.landmark + ', ' : ''}${defAddr.city}, ${defAddr.pincode}`;
+      user.address = `${defAddr.addressLine1}, ${defAddr.addressLine2 ? defAddr.addressLine2 + ', ' : ''}${defAddr.landmark ? defAddr.landmark + ', ' : ''}${defAddr.city}, ${defAddr.state ? defAddr.state + ', ' : ''}${defAddr.pincode}`;
     }
 
     await user.save();
@@ -42,7 +43,7 @@ exports.addAddress = async (req, res) => {
 exports.updateAddress = async (req, res) => {
   try {
     const { id } = req.params;
-    const { label, addressLine1, addressLine2, landmark, city, pincode, isDefault, coordinates } = req.body;
+    const { label, addressLine1, addressLine2, landmark, city, state, pincode, isDefault, coordinates } = req.body;
     const user = await User.findById(req.user.id);
 
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -61,6 +62,7 @@ exports.updateAddress = async (req, res) => {
       addressLine2: addressLine2 !== undefined ? addressLine2 : user.addresses[addrIndex].addressLine2,
       landmark: landmark !== undefined ? landmark : user.addresses[addrIndex].landmark,
       city: city || user.addresses[addrIndex].city,
+      state: state || user.addresses[addrIndex].state,
       pincode: pincode || user.addresses[addrIndex].pincode,
       coordinates: coordinates !== undefined ? coordinates : user.addresses[addrIndex].coordinates,
       isDefault: isDefault !== undefined ? isDefault : user.addresses[addrIndex].isDefault
@@ -68,7 +70,7 @@ exports.updateAddress = async (req, res) => {
 
     const defAddr = user.addresses.find(a => a.isDefault);
     if (defAddr) {
-      user.address = `${defAddr.addressLine1}, ${defAddr.addressLine2 ? defAddr.addressLine2 + ', ' : ''}${defAddr.landmark ? defAddr.landmark + ', ' : ''}${defAddr.city}, ${defAddr.pincode}`;
+      user.address = `${defAddr.addressLine1}, ${defAddr.addressLine2 ? defAddr.addressLine2 + ', ' : ''}${defAddr.landmark ? defAddr.landmark + ', ' : ''}${defAddr.city}, ${defAddr.state ? defAddr.state + ', ' : ''}${defAddr.pincode}`;
     }
 
     await user.save();
@@ -95,7 +97,7 @@ exports.deleteAddress = async (req, res) => {
     
     const defAddr = user.addresses.find(a => a.isDefault);
     if (defAddr) {
-      user.address = `${defAddr.addressLine1}, ${defAddr.addressLine2 ? defAddr.addressLine2 + ', ' : ''}${defAddr.landmark ? defAddr.landmark + ', ' : ''}${defAddr.city}, ${defAddr.pincode}`;
+      user.address = `${defAddr.addressLine1}, ${defAddr.addressLine2 ? defAddr.addressLine2 + ', ' : ''}${defAddr.landmark ? defAddr.landmark + ', ' : ''}${defAddr.city}, ${defAddr.state ? defAddr.state + ', ' : ''}${defAddr.pincode}`;
     } else {
       user.address = '';
     }

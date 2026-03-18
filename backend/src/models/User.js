@@ -22,6 +22,7 @@ const userSchema = new mongoose.Schema({
     addressLine2: { type: String },
     landmark: { type: String },
     city: { type: String },
+    state: { type: String },
     pincode: { type: String },
     coordinates: {
       latitude: { type: Number },

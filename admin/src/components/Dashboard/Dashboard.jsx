@@ -40,9 +40,9 @@ const Dashboard = () => {
       const subscriptions = subsRes.data || [];
       const orders = ordersRes.data || [];
 
-      const pending = orders.filter(o => o.status === 'Pending').length;
       const activeSubs = subscriptions.filter(s => s.status === 'active').length;
-      
+      const pending = orders.filter(o => o.status === 'Pending').length;
+
       // Calculate today's revenue (mock logic if no timestamp filtering on backend yet)
       const today = new Date().toDateString();
       const todayTotal = orders

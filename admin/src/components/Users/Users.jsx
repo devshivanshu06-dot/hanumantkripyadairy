@@ -1,10 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../../api/apiService';
-import { Users as UserIcon, Search, MapPin, Phone, Calendar } from 'lucide-react';
+import { Users as UserIcon, Search, MapPin, Phone, Calendar, ExternalLink, X } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+
+// Fix for default marker icon in Leaflet
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const UsersList = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [selectedCoords, setSelectedCoords] = useState(null);
+  const [selectedAddress, setSelectedAddress] = useState('');
 
   useEffect(() => {
     fetchUsers();
@@ -21,7 +40,17 @@ const UsersList = () => {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  const filteredUsers = users.filter(user => 
+    user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.addresses?.[0]?.addressLine1?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (loading) return (
+    <div className="flex items-center justify-center p-12">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  );
 
   return (
     <div className="space-y-8">
@@ -36,11 +65,13 @@ const UsersList = () => {
           type="text" 
           placeholder="Search by name, phone or address..." 
           className="flex-1 border-none focus:ring-0 p-0"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {users.map((user) => (
+        {filteredUsers.map((user) => (
           <div key={user._id} className="card hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div className="bg-gray-100 p-4 rounded-2xl">
@@ -62,7 +93,21 @@ const UsersList = () => {
                 </div>
                 <div className="flex items-start gap-3 text-gray-500 text-sm">
                   <MapPin size={16} className="mt-1 flex-shrink-0" />
-                  <span className="line-clamp-2">{user.address || 'No address set'}</span>
+                  <div className="flex-1">
+                    <span className="line-clamp-2">{user.addresses?.[0]?.addressLine1 || user.address || 'No address set'}</span>
+                    {user.addresses?.[0]?.coordinates && (
+                      <button 
+                        onClick={() => {
+                          setSelectedCoords(user.addresses[0].coordinates);
+                          setSelectedAddress(user.addresses[0].addressLine1);
+                          setShowMapModal(true);
+                        }}
+                        className="text-primary text-[10px] font-extrabold mt-1 inline-flex items-center gap-1 hover:underline uppercase tracking-wider"
+                      >
+                        <ExternalLink size={10} /> View Location on Map
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-3 text-gray-500 text-sm">
                   <Calendar size={16} />
@@ -77,6 +122,51 @@ const UsersList = () => {
           </div>
         ))}
       </div>
+
+      {showMapModal && selectedCoords && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999]">
+          <div className="bg-white rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl animate-zoomIn">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-xl font-bold">Customer Location</h2>
+                <p className="text-xs text-gray-500 mt-1">{selectedAddress}</p>
+              </div>
+              <button onClick={() => setShowMapModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition">
+                <X className="w-6 h-6 text-gray-400" />
+              </button>
+            </div>
+            
+            <div className="h-[500px] relative">
+              <MapContainer 
+                center={[selectedCoords.latitude, selectedCoords.longitude]} 
+                zoom={15} 
+                scrollWheelZoom={true}
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <Marker position={[selectedCoords.latitude, selectedCoords.longitude]}>
+                  <Popup>
+                    <div className="font-bold text-sm">Delivery Point</div>
+                    <div className="text-xs">{selectedAddress}</div>
+                  </Popup>
+                </Marker>
+              </MapContainer>
+            </div>
+            
+            <div className="p-6 border-t flex justify-end">
+              <button 
+                onClick={() => setShowMapModal(false)}
+                className="px-6 py-2.5 font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+              >
+                Close Map
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

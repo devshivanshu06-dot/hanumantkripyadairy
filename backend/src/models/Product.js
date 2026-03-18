@@ -37,10 +37,6 @@ const productSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
-  isSubscriptionAvailable: {
-    type: Boolean,
-    default: false
-  },
   isActive: {
     type: Boolean,
     default: true
