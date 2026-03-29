@@ -34,7 +34,8 @@ const verifyToken = async (req, res, next, requiredRole = null) => {
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired' });
     }
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Auth Middleware Error:', error);
+    return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };
 

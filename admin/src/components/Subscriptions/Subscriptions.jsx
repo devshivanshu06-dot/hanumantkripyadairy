@@ -46,9 +46,10 @@ const Subscriptions = () => {
     }
   };
 
-  const filteredSubs = filter === 'all' 
-    ? subscriptions 
-    : subscriptions.filter(s => s.status === filter);
+  const filteredSubs = subscriptions.filter(s => {
+    if (s.status === 'cancelled') return false;
+    return filter === 'all' || s.status === filter;
+  });
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
 
@@ -84,7 +85,7 @@ const Subscriptions = () => {
         </div>
         
         <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-xl">
-          {['all', 'active', 'paused', 'cancelled'].map((f) => (
+          {['all', 'active', 'paused'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}

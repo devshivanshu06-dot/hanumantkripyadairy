@@ -14,11 +14,11 @@ router.get('/active', getActiveBanners);
 
 // Admin routes
 router.route('/')
-  .get(auth, adminAuth, getAllBanners)
-  .post(auth, adminAuth, addBanner);
+  .get(adminAuth, getAllBanners)
+  .post(adminAuth, addBanner);
 
 router.route('/:id')
-  .put(auth, adminAuth, updateBanner)
-  .delete(auth, adminAuth, deleteBanner);
+  .put(adminAuth, updateBanner)
+  .delete(adminAuth, deleteBanner);
 
 module.exports = router;

@@ -10,11 +10,11 @@ const createSubscription = async (userId, subscriptionData) => {
 };
 
 const getSubscriptionsByUserId = async (userId) => {
-  return await Subscription.find({ user: userId }).populate('product');
+  return await Subscription.find({ user: userId, status: { $ne: 'cancelled' } }).populate('product');
 };
 
 const getAllSubscriptions = async () => {
-  return await Subscription.find().populate('user product').sort({ createdAt: -1 });
+  return await Subscription.find({ status: { $ne: 'cancelled' } }).populate('user product').sort({ createdAt: -1 });
 };
 
 const updateSubscription = async (subscriptionId, updateData) => {

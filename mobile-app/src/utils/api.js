@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Change the production URL to your actual hosted backend domain
-const API_URL = 'http://192.168.0.3:5000/api';
+const API_URL = 'http://192.168.0.6:4000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -56,6 +56,20 @@ export const addressAPI = {
 
 export const bannerAPI = {
   getActiveBanners: () => api.get('/banners/active'),
+};
+
+export const walletAPI = {
+  getBalance: () => api.get('/wallet/balance'),
+  getTransactions: () => api.get('/wallet/transactions'),
+  addMoney: (data) => api.post('/wallet/add-money', data),
+};
+
+export const customerAPI = {
+  getLivestreams: () => api.get('/customer/livestreams'),
+};
+
+export const orderAPI = {
+  getMyOrders: () => api.get('/orders/my-orders'),
 };
 
 export default api;

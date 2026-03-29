@@ -39,7 +39,12 @@ exports.addBanner = async (req, res) => {
     const savedBanner = await newBanner.save();
     res.status(201).json(savedBanner);
   } catch (error) {
-    res.status(500).json({ error: 'Server error creating banner' });
+    console.error('Error creating banner:', error);
+    res.status(500).json({ 
+      error: 'Server error creating banner', 
+      details: error.message,
+      stack: error.stack 
+    });
   }
 };
 

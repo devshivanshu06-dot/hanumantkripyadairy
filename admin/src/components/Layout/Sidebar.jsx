@@ -9,7 +9,8 @@ import {
   Package,
   Milk,
   LogOut,
-  ImageIcon
+  ImageIcon,
+  Activity
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -22,6 +23,7 @@ const Sidebar = () => {
     { path: '/subscriptions', icon: CalendarRange, label: 'Subscriptions' },
     { path: '/orders', icon: Truck, label: 'Deliveries' },
     { path: '/banners', icon: ImageIcon, label: 'Banners' },
+    { path: '/livestreams', icon: Activity, label: 'Live Preview' },
     { path: '/users', icon: Users, label: 'Customers' },
     { path: '/ledger', icon: ShoppingBag, label: 'Ledger' },
   ];

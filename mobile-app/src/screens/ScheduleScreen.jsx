@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { subscriptionAPI } from '../utils/api';
@@ -101,260 +101,114 @@ const ScheduleScreen = ({ navigation }) => {
 
   if (loading && !refreshing) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF6B6B" />
+      <View className="flex-1 justify-center items-center bg-white">
+        <ActivityIndicator size="large" color="#1e3a8a" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Subscriptions</Text>
+    <SafeAreaView className="flex-1 bg-[#F8FAFC]">
+      <View className="flex-row items-center px-6 py-4 bg-white border-b border-gray-50 shadow-sm z-10">
+        <Text className="text-xl font-black text-blue-900 tracking-tight">My Subscriptions</Text>
       </View>
 
       <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchSubscriptions(); }} />}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchSubscriptions(); }} colors={['#1e3a8a']} />}
       >
-        {subscriptions.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Icon name="event-busy" size={64} color="#adb5bd" />
-            <Text style={styles.emptyTitle}>No active subscriptions</Text>
-            <Text style={styles.emptySubtitle}>Subscribe to your favorite milk and get daily delivery.</Text>
-          </View>
-        ) : (
-          subscriptions.map((sub) => (
-            <View key={sub._id} style={[styles.subCard, sub.status === 'paused' && styles.pausedCard]}>
-              <View style={styles.subHeader}>
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{sub.product.name}</Text>
-                  <Text style={styles.subDetail}>{sub.quantity} {sub.product.unit} • {sub.frequency} • {sub.timeSlot}</Text>
-                </View>
-                <View style={[styles.statusBadge, styles[`status${sub.status}`]]}>
-                  <Text style={styles.statusText}>{sub.status.toUpperCase()}</Text>
-                </View>
+        <View className="px-6 pt-6">
+          {subscriptions.length === 0 ? (
+            <View className="items-center justify-center mt-32 px-10">
+              <View className="bg-blue-50 w-24 h-24 rounded-full items-center justify-center mb-6">
+                <Icon name="event-busy" size={48} color="#1e3a8a" />
               </View>
-
-              {sub.status === 'paused' && sub.pausedUntil && (
-                <View style={styles.pausedInfo}>
-                  <Icon name="info-outline" size={16} color="#666" />
-                  <Text style={styles.pausedText}>Paused until {new Date(sub.pausedUntil).toLocaleDateString()}</Text>
-                </View>
-              )}
-
-              <View style={styles.actionRow}>
-                {sub.status === 'active' ? (
-                  <TouchableOpacity style={styles.pauseBtn} onPress={() => handlePause(sub._id)}>
-                    <Icon name="pause-circle-outline" size={20} color="#FF6B6B" />
-                    <Text style={styles.pauseBtnText}>Pause</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity style={styles.resumeBtn} onPress={() => handleResume(sub._id)}>
-                    <Icon name="play-circle-outline" size={20} color="#28a745" />
-                    <Text style={styles.resumeBtnText}>Resume</Text>
-                  </TouchableOpacity>
-                )}
-                
-                <TouchableOpacity style={styles.skipBtn} onPress={() => handleSkip(sub._id)}>
-                  <Icon name="event-busy" size={20} color="#666" />
-                  <Text style={styles.skipBtnText}>Skip Tomorrow</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancel(sub._id)}>
-                  <Icon name="cancel" size={20} color="#adb5bd" />
-                </TouchableOpacity>
-              </View>
+              <Text className="text-2xl font-black text-blue-950 mb-2">No Active Plans</Text>
+              <Text className="text-gray-400 font-bold text-center">Subscribe to our pure dairy products for daily doorstep delivery.</Text>
             </View>
-          ))
-        )}
+          ) : (
+            subscriptions.map((sub) => (
+              <View key={sub._id} className={`bg-white rounded-[32px] p-6 mb-4 shadow-sm border ${sub.status === 'paused' ? 'border-orange-100 bg-orange-50/30' : 'border-gray-100'}`}>
+                <View className="flex-row justify-between items-start mb-4">
+                  <View className="flex-row flex-1">
+                    <View className="w-14 h-14 bg-blue-50 rounded-2xl items-center justify-center mr-4 border border-blue-100">
+                       <Image 
+                         source={{ uri: sub.product.image || 'https://cdn-icons-png.flaticon.com/512/2917/2917633.png' }} 
+                         className="w-10 h-10"
+                         resizeMode="contain"
+                       />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-lg font-black text-blue-950">{sub.product.name}</Text>
+                      <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                        {sub.quantity} {sub.product.unit} • {sub.frequency} • {sub.timeSlot}
+                      </Text>
+                    </View>
+                  </View>
+                  <View className={`px-3 py-1 rounded-lg ${sub.status === 'active' ? 'bg-green-100' : 'bg-orange-100'}`}>
+                    <Text className={`text-[10px] font-black uppercase ${sub.status === 'active' ? 'text-green-700' : 'text-orange-700'}`}>
+                      {sub.status}
+                    </Text>
+                  </View>
+                </View>
+
+                {sub.status === 'paused' && sub.pausedUntil && (
+                  <View className="flex-row items-center bg-white p-3 rounded-xl mb-4 border border-orange-100">
+                    <Icon name="pause-circle-filled" size={16} color="#d97706" />
+                    <Text className="text-xs font-bold text-orange-700 ml-2">
+                      Resuming on {new Date(sub.pausedUntil).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                    </Text>
+                  </View>
+                )}
+
+                <View className="flex-row gap-3">
+                  {sub.status === 'active' ? (
+                    <TouchableOpacity 
+                      className="flex-1 flex-row items-center justify-center bg-orange-50 py-3.5 rounded-2xl border border-orange-100" 
+                      onPress={() => handlePause(sub._id)}
+                    >
+                      <Icon name="pause" size={18} color="#d97706" />
+                      <Text className="text-orange-700 font-black text-xs ml-1 uppercase">Pause</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity 
+                      className="flex-1 flex-row items-center justify-center bg-green-50 py-3.5 rounded-2xl border border-green-100" 
+                      onPress={() => handleResume(sub._id)}
+                    >
+                      <Icon name="play-arrow" size={18} color="#15803d" />
+                      <Text className="text-green-700 font-black text-xs ml-1 uppercase">Resume</Text>
+                    </TouchableOpacity>
+                  )}
+                  
+                  <TouchableOpacity 
+                    className="flex-1 flex-row items-center justify-center bg-blue-50 py-3.5 rounded-2xl border border-blue-100" 
+                    onPress={() => handleSkip(sub._id)}
+                  >
+                    <Icon name="event-busy" size={18} color="#1e3a8a" />
+                    <Text className="text-blue-900 font-black text-xs ml-1 uppercase">Skip</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    className="bg-gray-50 px-4 items-center justify-center rounded-2xl border border-gray-200" 
+                    onPress={() => handleCancel(sub._id)}
+                  >
+                    <Icon name="delete-outline" size={20} color="#94a3b8" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('Home')}>
+      <TouchableOpacity 
+        className="absolute bottom-24 right-6 w-16 h-16 rounded-full bg-blue-900 justify-center items-center shadow-xl shadow-blue-200" 
+        onPress={() => navigation.navigate('Home')}
+      >
         <Icon name="add" size={32} color="white" />
       </TouchableOpacity>
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    padding: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f8f9fa',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#1a1a1a',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingTop: 100,
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  subCard: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  pausedCard: {
-    backgroundColor: '#f8f9fa',
-    borderColor: '#e9ecef',
-  },
-  subHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  productName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 4,
-  },
-  subDetail: {
-    fontSize: 13,
-    color: '#666',
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusactive: {
-    backgroundColor: '#E8F5E9',
-  },
-  statuspaused: {
-    backgroundColor: '#FFF3E0',
-  },
-  statuscancelled: {
-    backgroundColor: '#FFEBEE',
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#1a1a1a',
-  },
-  pausedInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  pausedText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 8,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  pauseBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFF0F0',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  pauseBtnText: {
-    color: '#FF6B6B',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  resumeBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#E8F5E9',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  resumeBtnText: {
-    color: '#28a745',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  skipBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f1f3f5',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  skipBtnText: {
-    color: '#495057',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  cancelBtn: {
-    padding: 10,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#1a1a1a',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-});
 
 export default ScheduleScreen;

@@ -60,66 +60,71 @@ const ProductScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-row items-center p-4">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 bg-gray-50 rounded-full">
-          <Icon name="arrow-back" size={24} color="#1a1a1a" />
+    <SafeAreaView className="flex-1 bg-[#F8FAFC]">
+      <View className="flex-row items-center p-4 bg-white border-b border-gray-50">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 bg-gray-50 rounded-2xl">
+          <Icon name="arrow-back-ios" size={20} color="#1e3a8a" />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900 ml-4">Product Details</Text>
+        <Text className="text-xl font-black text-blue-900 ml-4 tracking-tight">Product Details</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
-        <View className="h-72 bg-gray-50 justify-center items-center rounded-b-3xl mb-4">
+      <ScrollView contentContainerStyle={{ paddingBottom: 150 }} showsVerticalScrollIndicator={false}>
+        <View className="h-80 bg-white justify-center items-center rounded-b-[48px] shadow-sm overflow-hidden mb-6">
           <Image 
             source={{ uri: product.image || 'https://cdn-icons-png.flaticon.com/512/2917/2917633.png' }} 
-            className="w-56 h-56 items-center justify-center resize-contain" 
+            className="w-64 h-64 resize-contain" 
           />
         </View>
 
-        <View className="px-6 py-4">
+        <View className="px-6">
           <View className="flex-row justify-between items-start mb-2">
             <View className="flex-1">
-              <Text className="text-2xl font-extrabold text-gray-900 mb-1">{product.name}</Text>
-              <Text className="text-gray-500 font-medium capitalize">{product.category}</Text>
+              <Text className="text-3xl font-black text-blue-950 mb-1">{product.name}</Text>
+              <View className="bg-blue-50 self-start px-3 py-1 rounded-lg border border-blue-100">
+                <Text className="text-blue-900 font-black text-[10px] uppercase tracking-widest">{product.category}</Text>
+              </View>
             </View>
-            <Text className="text-2xl font-extrabold text-red-500">₹{product.price}</Text>
+            <View className="items-end">
+              <Text className="text-3xl font-black text-blue-900">₹{product.price}</Text>
+              <Text className="text-xs font-bold text-gray-400">/ {product.unit}</Text>
+            </View>
           </View>
           
-          <Text className="text-sm text-gray-400 font-bold mb-6">/ {product.unit}</Text>
-          
-          <Text className="text-base text-gray-600 leading-6 mb-8">
-            {product.description || 'Fresh and pure dairy product sourced organically.'}
+          <Text className="text-base text-gray-500 font-bold leading-6 mt-6 mb-8">
+            {product.description || 'Experience the purity of farm-fresh dairy delivered straight to your doorstep within hours of milking.'}
           </Text>
 
-
-
-          <View className="mb-8">
-            <Text className="text-base font-bold text-gray-900 mb-4">
-              Quantity per day
-            </Text>
-            <View className="flex-row items-center bg-gray-50 p-2 rounded-2xl w-40 justify-between border border-gray-100">
-              <TouchableOpacity className="p-2 bg-white rounded-xl shadow-sm" onPress={() => setQuantity(Math.max(1, quantity - 1))}>
-                <Icon name="remove" size={24} color="#EF4444" />
+          <View className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm mb-6">
+            <Text className="text-base font-black text-blue-950 mb-4">Quantity per day</Text>
+            <View className="flex-row items-center bg-gray-50 p-2 rounded-2xl w-48 justify-between border border-gray-100">
+              <TouchableOpacity 
+                className="w-12 h-12 bg-white rounded-xl shadow-sm items-center justify-center border border-gray-100" 
+                onPress={() => setQuantity(Math.max(1, quantity - 1))}
+              >
+                <Icon name="remove" size={24} color="#1e3a8a" />
               </TouchableOpacity>
-              <Text className="text-xl font-bold text-gray-900">{quantity}</Text>
-              <TouchableOpacity className="p-2 bg-white rounded-xl shadow-sm" onPress={() => setQuantity(quantity + 1)}>
-                <Icon name="add" size={24} color="#EF4444" />
+              <Text className="text-2xl font-black text-blue-900">{quantity}</Text>
+              <TouchableOpacity 
+                className="w-12 h-12 bg-white rounded-xl shadow-sm items-center justify-center border border-gray-100" 
+                onPress={() => setQuantity(quantity + 1)}
+              >
+                <Icon name="add" size={24} color="#1e3a8a" />
               </TouchableOpacity>
             </View>
           </View>
 
           <View className="mb-6">
-            <Text className="text-base font-bold text-gray-900 mb-4">Delivery Slot</Text>
+            <Text className="text-base font-black text-blue-950 mb-4">Delivery Slot</Text>
             <View className="flex-row gap-3">
               {['Morning', 'Evening'].map(slot => (
                 <TouchableOpacity 
                   key={slot} 
-                  className={`flex-1 py-4 rounded-2xl border-2 items-center ${timeSlot === slot ? 'border-red-400 bg-red-50' : 'border-gray-100 bg-white'}`}
+                  className={`flex-1 py-4 rounded-2xl border-2 items-center ${timeSlot === slot ? 'border-blue-900 bg-blue-50' : 'border-gray-100 bg-white'}`}
                   onPress={() => setTimeSlot(slot)}
                 >
                   <View className="flex-row items-center gap-2">
-                    <Icon name={slot === 'Morning' ? 'wb-sunny' : 'nights-stay'} size={18} color={timeSlot === slot ? '#EF4444' : '#6B7280'} />
-                    <Text className={`font-bold ${timeSlot === slot ? 'text-red-500' : 'text-gray-600'}`}>{slot}</Text>
+                    <Icon name={slot === 'Morning' ? 'wb-sunny' : 'nights-stay'} size={18} color={timeSlot === slot ? '#1e3a8a' : '#94a3b8'} />
+                    <Text className={`font-black ${timeSlot === slot ? 'text-blue-900' : 'text-slate-400'}`}>{slot}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -127,7 +132,7 @@ const ProductScreen = ({ navigation, route }) => {
           </View>
 
           <View className="mb-6">
-            <Text className="text-base font-bold text-gray-900 mb-4">Frequency</Text>
+            <Text className="text-base font-black text-blue-950 mb-4">Frequency</Text>
             <View className="flex-row gap-3">
               {[
                 { id: 'daily', label: 'Every Day' },
@@ -135,10 +140,10 @@ const ProductScreen = ({ navigation, route }) => {
               ].map(item => (
                 <TouchableOpacity 
                   key={item.id} 
-                  className={`flex-1 py-4 rounded-2xl border-2 items-center tracking-tight ${frequency === item.id ? 'border-red-400 bg-red-50' : 'border-gray-100 bg-white'}`}
+                  className={`flex-1 py-4 rounded-2xl border-2 items-center ${frequency === item.id ? 'border-blue-900 bg-blue-50' : 'border-gray-100 bg-white'}`}
                   onPress={() => setFrequency(item.id)}
                 >
-                  <Text className={`font-bold ${frequency === item.id ? 'text-red-500' : 'text-gray-600'}`}>
+                  <Text className={`font-black ${frequency === item.id ? 'text-blue-900' : 'text-slate-400'}`}>
                     {item.label}
                   </Text>
                 </TouchableOpacity>
@@ -148,16 +153,16 @@ const ProductScreen = ({ navigation, route }) => {
         </View>
       </ScrollView>
 
-      <View className="absolute bottom-0 w-full p-6 bg-white border-t border-gray-100">
+      <View className="absolute bottom-0 w-full p-8 bg-white border-t border-gray-50 rounded-t-[40px] shadow-2xl">
         <TouchableOpacity 
-          className="bg-red-500 py-4 rounded-2xl flex-row items-center justify-center shadow-lg shadow-red-200 active:scale-95 transition-transform"
+          className="bg-blue-900 py-5 rounded-2xl flex-row items-center justify-center shadow-xl shadow-blue-200"
           onPress={handleSubscribe}
           disabled={loading}
         >
           {loading ? <ActivityIndicator color="white" /> : (
             <>
               <Icon name="event-repeat" size={22} color="white" />
-              <Text className="text-white text-lg font-bold ml-2">Subscribe Now</Text>
+              <Text className="text-white text-lg font-black ml-2 uppercase tracking-widest">Subscribe Now</Text>
             </>
           )}
         </TouchableOpacity>

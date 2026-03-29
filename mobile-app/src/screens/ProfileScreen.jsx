@@ -13,11 +13,26 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '../context/AuthContext';
+import { walletAPI } from '../utils/api';
 
 const ProfileScreen = ({ navigation }) => {
-  const { user, setIsLoggedIn } = useAuth();
+  const { user, logout } = useAuth();
   const [notifications, setNotifications] = useState(true);
   const [autoSchedule, setAutoSchedule] = useState(false);
+  const [balance, setBalance] = useState(0);
+
+  React.useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      const balanceRes = await walletAPI.getBalance();
+      setBalance(balanceRes.data.balance);
+    } catch (error) {
+      console.error('Failed to fetch user data', error);
+    }
+  };
 
   // Use dummy data mixed with real user context since full backend stats might not exist yet
   const userData = {
@@ -109,9 +124,30 @@ const ProfileScreen = ({ navigation }) => {
          {/* Menu Items as per Image 1 */}
          <View className="px-5">
            {[
-             { id: '1', title: 'Delivery Address', subtitle: '123, Shakti Nagar, Jaipur, Rajasthan - 302021', icon: 'home', color: '#1e3a8a', screen: 'Addresses' },
-             { id: '2', title: 'Subscription Plan', subtitle: 'Cow Milk: 1 Litre/Day', icon: 'event-available', color: '#16a34a', screen: 'Schedule' },
-             { id: '3', title: 'Wallet Balance', subtitle: '₹140', icon: 'credit-card', color: '#1e3a8a', screen: 'Wallet' },
+             { 
+               id: '1', 
+               title: 'Delivery Address', 
+               subtitle: user?.addresses?.find(a => a.isDefault)?.addressLine1 || user?.addresses?.[0]?.addressLine1 || 'No address set', 
+               icon: 'home', 
+               color: '#1e3a8a', 
+               screen: 'Addresses' 
+             },
+             { 
+               id: '2', 
+               title: 'Subscription Plan', 
+               subtitle: 'View active plans', 
+               icon: 'event-available', 
+               color: '#16a34a', 
+               screen: 'Schedule' 
+             },
+             { 
+               id: '3', 
+               title: 'Wallet Balance', 
+               subtitle: `₹${balance.toFixed(2)}`, 
+               icon: 'credit-card', 
+               color: '#1e3a8a', 
+               screen: 'Wallet' 
+             },
              { id: '4', title: 'My Orders', subtitle: 'View order history', icon: 'inventory-2', color: '#1e3a8a', screen: 'My Orders' },
              { id: '5', title: 'Help & Support', subtitle: 'Get assistance', icon: 'headset-mic', color: '#1e3a8a', screen: 'Support' },
            ].map((item) => (

@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../context/AuthContext';
@@ -30,7 +31,7 @@ const AddressesScreen = ({ navigation }) => {
       await addressAPI.deleteAddress(id);
       await reloadUser();
     } catch (error) {
-      alert("Failed to delete address");
+      Alert.alert("Delete Error", "Failed to delete address. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -45,72 +46,69 @@ const AddressesScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-[#F8FAFC]">
       {/* Header */}
-      <View className="flex-row justify-between items-center px-4 py-4 bg-white shadow-sm z-10">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
-          <Icon name="arrow-back" size={24} color="#1a1a1a" />
+      <View className="flex-row justify-between items-center px-6 py-4 bg-white border-b border-gray-50 shadow-sm z-10">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2 bg-gray-50 rounded-2xl">
+          <Icon name="arrow-back-ios" size={20} color="#1e3a8a" />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900">My Addresses</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Address')} className="p-2 -mr-2 bg-red-50 rounded-xl">
-          <Icon name="add" size={24} color="#FF6B6B" />
+        <Text className="text-xl font-black text-blue-900 tracking-tight">My Addresses</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Address')} className="p-2 -mr-2 bg-blue-50 rounded-2xl border border-blue-100">
+          <Icon name="add" size={24} color="#1e3a8a" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1 pt-4 px-4">
-        {loading && <ActivityIndicator color="#FF6B6B" className="mb-4" />}
+      <ScrollView className="flex-1 pt-6 px-6" showsVerticalScrollIndicator={false}>
+        {loading && <ActivityIndicator color="#1e3a8a" className="mb-4" />}
 
         {(!user?.addresses || user.addresses.length === 0) ? (
           <View className="flex-1 items-center justify-center mt-32">
-            <View className="bg-red-50 w-24 h-24 rounded-full items-center justify-center mb-6">
-              <Icon name="location-off" size={40} color="#FF6B6B" />
+            <View className="bg-blue-50 w-24 h-24 rounded-full items-center justify-center mb-6">
+              <Icon name="location-off" size={40} color="#1e3a8a" />
             </View>
-            <Text className="text-xl font-bold text-gray-800 mb-2">No Addresses Found</Text>
-            <Text className="text-gray-500 mb-8 px-8 text-center">You haven't added any delivery addresses yet.</Text>
+            <Text className="text-2xl font-black text-blue-950 mb-2">No Addresses Found</Text>
+            <Text className="text-gray-400 font-bold mb-8 px-8 text-center">You haven't added any delivery addresses yet.</Text>
             <TouchableOpacity 
-              className="bg-red-400 px-8 py-3.5 rounded-xl flex-row items-center shadow-sm"
+              className="bg-blue-900 px-8 py-4 rounded-2xl flex-row items-center shadow-lg shadow-blue-200"
               onPress={() => navigation.navigate('Address')}
             >
-              <Icon name="add" size={20} color="white" className="mr-2" />
-              <Text className="text-white font-bold ml-2 text-base">Add New Address</Text>
+              <Icon name="add" size={20} color="white" />
+              <Text className="text-white font-black ml-2 text-base uppercase tracking-widest">Add New Address</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View className="space-y-4">
             {user.addresses.map((addr) => (
-              <View key={addr._id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+              <View key={addr._id} className="bg-white rounded-[32px] p-6 mb-4 shadow-sm border border-gray-100">
                 <View className="flex-row justify-between items-start">
                   
                   <View className="flex-row flex-1">
-                    <View className="bg-gray-50 w-10 h-10 rounded-full items-center justify-center mt-1 mr-4">
-                      <Icon name={getIconForLabel(addr.label)} size={20} color="#FF6B6B" />
+                    <View className="bg-blue-50 w-12 h-12 rounded-2xl items-center justify-center mr-4 border border-blue-100">
+                      <Icon name={getIconForLabel(addr.label)} size={24} color="#1e3a8a" />
                     </View>
                     <View className="flex-1 pr-4">
-                      <View className="flex-row items-center gap-2 mb-1.5">
-                        <Text className="text-base font-bold text-gray-900">{addr.label}</Text>
+                      <View className="flex-row items-center gap-2 mb-2">
+                        <Text className="text-lg font-black text-blue-950">{addr.label}</Text>
                         {addr.isDefault && (
-                          <View className="bg-green-100 px-2.5 py-0.5 rounded-full">
-                            <Text className="text-[10px] font-bold text-green-700">DEFAULT</Text>
+                          <View className="bg-green-100 px-3 py-1 rounded-lg">
+                            <Text className="text-[10px] font-black text-green-700 uppercase">Default</Text>
                           </View>
                         )}
                       </View>
-                      <Text className="text-gray-600 text-sm leading-5">
+                      <Text className="text-gray-500 font-bold text-sm leading-5">
                         {addr.addressLine1}
                         {addr.addressLine2 ? `, ${addr.addressLine2}` : ''}
                       </Text>
-                      <Text className="text-gray-500 text-sm mt-0.5 mb-1">
+                      <Text className="text-gray-400 font-bold text-xs mt-1">
                         {addr.city}, {addr.pincode}
                       </Text>
                       {addr.coordinates?.latitude && addr.coordinates?.longitude ? (
-                        <View className="flex-row items-center">
+                        <View className="flex-row items-center mt-3">
                           <Icon name="check-circle" size={14} color="#10b981" />
-                          <Text className="text-xs text-green-500 font-bold ml-1">
+                          <Text className="text-[10px] text-green-600 font-black ml-1 uppercase">
                             Location Pinned
                           </Text>
                         </View>
-                      ) : null}
-                      {addr.landmark ? (
-                        <Text className="text-gray-400 text-xs mt-1">Landmark: {addr.landmark}</Text>
                       ) : null}
                     </View>
                   </View>
@@ -118,19 +116,18 @@ const AddressesScreen = ({ navigation }) => {
                   {/* Action Buttons */}
                   <View className="flex-col gap-2">
                     <TouchableOpacity 
-                      className="p-2"
+                      className="p-3 bg-blue-50 rounded-xl"
                       onPress={() => navigation.navigate('Address', { address: addr })}
                     >
-                      <Icon name="edit" size={20} color="#3b82f6" />
+                      <Icon name="edit" size={20} color="#1e3a8a" />
                     </TouchableOpacity>
                     <TouchableOpacity 
-                      className="p-2"
+                      className="p-3 bg-red-50 rounded-xl"
                       onPress={() => handleDelete(addr._id)}
                     >
-                      <Icon name="delete" size={20} color="#ef4444" />
+                      <Icon name="delete-outline" size={20} color="#dc2626" />
                     </TouchableOpacity>
                   </View>
-
                 </View>
               </View>
             ))}

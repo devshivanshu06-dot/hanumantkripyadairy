@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
-import { productAPI, subscriptionAPI, bannerAPI } from '../utils/api';
+import YoutubePlayer from 'react-native-youtube-iframe';
+import { productAPI, subscriptionAPI, bannerAPI, customerAPI, walletAPI, orderAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
@@ -23,6 +24,10 @@ const HomeScreen = ({ navigation }) => {
   const [products, setProducts] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [banners, setBanners] = useState([]);
+  const [livestreams, setLivestreams] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [orders, setOrders] = useState([]);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuth();
@@ -33,16 +38,24 @@ const HomeScreen = ({ navigation }) => {
 
   const fetchHomeData = async () => {
     try {
-      const [productsRes, subsRes, bannersRes] = await Promise.all([
+      const [productsRes, subsRes, bannersRes, livestreamsRes, walletRes, ordersRes] = await Promise.all([
         productAPI.getProducts(),
         subscriptionAPI.getMySubscriptions(),
-        bannerAPI.getActiveBanners()
+        bannerAPI.getActiveBanners(),
+        customerAPI.getLivestreams(),
+        walletAPI.getBalance().catch(() => ({ data: { balance: 0 } })),
+        orderAPI.getMyOrders().catch(() => ({ data: [] }))
       ]);
       setProducts(productsRes.data);
       setSubscriptions(subsRes.data);
+      setOrders(ordersRes.data || []);
       if (bannersRes.data) {
         setBanners(bannersRes.data);
       }
+      if (livestreamsRes.data) {
+        setLivestreams(livestreamsRes.data);
+      }
+      setWalletBalance(walletRes.data.balance);
     } catch (error) {
       console.error('Failed to fetch home data', error);
     } finally {
@@ -137,107 +150,86 @@ const HomeScreen = ({ navigation }) => {
         <View className="px-6 pt-6 pb-2">
            <Text className="text-2xl font-black text-blue-950">Welcome {user?.name?.split(' ')[0] || 'User'}!</Text>
         </View>
-        {/* Promo Banner Slider (Top-most) */}
         <View className="mb-6">
-          <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} className="w-full">
-            {banners.length > 0 ? (
-                banners.map((item, index) => (
-                    <TouchableOpacity key={item._id} className="w-[100vw] px-6 active:opacity-90">
-                        <View className="h-44 w-full rounded-3xl overflow-hidden shadow-sm border border-blue-200">
-                           <Image source={{ uri: item.image }} className="w-full h-full" resizeMode="cover" />
-                           <LinearGradient
-                             colors={['transparent', 'rgba(0,0,0,0.6)']}
-                             className="absolute inset-0 flex-col justify-end p-5"
-                           >
-                              <Text className="text-white text-xl font-black mb-1">{item.title}</Text>
-                              <TouchableOpacity className="bg-blue-900 self-start px-4 py-2 rounded-xl">
-                                <Text className="text-white text-[10px] font-black uppercase">Subscribe Now</Text>
-                              </TouchableOpacity>
-                           </LinearGradient>
+          <ScrollView 
+            horizontal 
+            pagingEnabled 
+            showsHorizontalScrollIndicator={false} 
+            className="w-full"
+            onScroll={(e) => {
+              const x = e.nativeEvent.contentOffset.x;
+              setActiveIndex(Math.round(x / width));
+            }}
+            scrollEventThrottle={16}
+          >
+            {(banners.length > 0 ? banners : [1, 2, 3]).map((item, index) => (
+                    <TouchableOpacity key={item._id || index} className="w-[100vw] px-6 active:opacity-95">
+                        <View className="h-44 w-full rounded-[32px] overflow-hidden shadow-xl shadow-blue-100 border border-blue-100 bg-blue-50">
+                           {item.image ? (
+                             <Image source={{ uri: item.image }} className="w-full h-full" resizeMode="cover" />
+                           ) : (
+                             <View className="flex-1 justify-center items-center">
+                               <Icon name="photo-library" size={48} color="#1e3a8a" />
+                               <Text className="text-blue-900 font-black mt-2">Special Offer {index + 1}</Text>
+                             </View>
+                           )}
+                           {/* Overlay removed as requested */}
+                           {/* Overlay removed as requested */}
+                           <View className="absolute inset-x-0 bottom-0 p-6">
+                           </View>
                         </View>
                     </TouchableOpacity>
                 ))
-            ) : (
-                /* Fallback Slider */
-                [1, 2, 3].map((i) => (
-                  <TouchableOpacity key={i} className="w-[100vw] px-6 active:opacity-90">
-                    <View className="h-44 w-full rounded-3xl overflow-hidden shadow-sm border border-blue-200 bg-blue-50 justify-center items-center">
-                       <Icon name="photo-library" size={48} color="#1e3a8a" />
-                       <Text className="text-blue-900 font-bold mt-2">Special Offers will appear here</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))
-            )}
+            }
           </ScrollView>
-          <View className="flex-row justify-center mt-3 gap-1">
-            {(banners.length > 0 ? banners : [1, 2, 3]).map((i, idx) => (
-              <View key={idx} className={`h-1.5 rounded-full ${idx === 0 ? 'w-4 bg-blue-900' : 'w-1.5 bg-gray-300'}`} />
+          <View className="flex-row justify-center mt-4 gap-1.5">
+            {(banners.length > 0 ? banners : [1, 2, 3]).map((_, idx) => (
+              <View 
+                key={idx} 
+                className={`h-1.5 rounded-full transition-all duration-300 ${idx === activeIndex ? 'w-6 bg-blue-900' : 'w-1.5 bg-gray-300'}`} 
+              />
             ))}
           </View>
         </View>
 
-        {/* Active Subscription (Image 2 style) */}
-        {subscriptions.filter(s => s.status === 'active').length > 0 ? (
-          <View className="px-6 mb-8">
-            <Text className="text-xl font-black text-gray-900 mb-4">Cow Milk Subscription</Text>
-            {subscriptions.filter(s => s.status === 'active').slice(0, 1).map((sub) => (
-              <TouchableOpacity key={sub._id} className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-blue-50 h-52">
-                <Image 
-                  source={{ uri: 'https://img.freepik.com/free-photo/fresh-milk-glass-wooden-table_1150-17631.jpg' }} 
-                  className="absolute inset-0 w-full h-full"
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                   colors={['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.7)', 'transparent']}
-                   className="absolute inset-0 p-6"
-                   start={{ x: 0, y: 0.5 }}
-                   end={{ x: 1, y: 0.5 }}
-                >
-                   <View className="flex-row items-center mb-3">
-                      <View className="w-5 h-5 bg-green-500 rounded-full items-center justify-center mr-2">
-                        <Icon name="check" size={14} color="white" />
-                      </View>
-                      <Text className="text-base font-bold text-blue-900">{sub.quantity} {sub.product.unit} Every Day</Text>
-                   </View>
-                   <View className="flex-row items-center mb-4">
-                      <View className="w-5 h-5 bg-green-500 rounded-full items-center justify-center mr-2">
-                        <Icon name="check" size={14} color="white" />
-                      </View>
-                      <Text className="text-base font-bold text-blue-900">Starts Tomorrow</Text>
-                   </View>
-                   <Text className="text-xl font-bold text-blue-950">Total Cost: ₹{sub.product.price * sub.quantity} / Day</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : null}
-
-        {/* Live Transparency Feed Placeholder */}
+        
+        {/* Live Transparency Feed (YouTube Embed) */}
         <View className="mt-8 px-6">
-          <View className="bg-[#1e3a8a] rounded-t-2xl p-4">
-            <Text className="text-white text-lg font-bold">Live Transparency Feed</Text>
-          </View>
-          <View className="bg-white border border-gray-200 border-t-0 rounded-b-2xl p-4 flex-row justify-between">
-            <View className="flex-1 mr-2 relative">
-                <View className="h-32 bg-gray-100 rounded-xl justify-center items-center overflow-hidden">
-                    <Image source={{uri: 'https://images.unsplash.com/photo-1550583724-125581f77833?q=80&w=1000&auto=format&fit=crop'}} className="w-full h-full" resizeMode="cover" />
-                    <View className="absolute top-2 left-2 bg-red-600 px-2 py-0.5 rounded">
-                        <Text className="text-white font-black text-[8px]">LIVE</Text>
-                    </View>
-                    <View className="absolute bottom-0 bg-black/60 px-2 py-1 w-full">
-                        <Text className="text-white text-[10px] text-center font-bold">Fat: 4.7% SNF: 8.4%</Text>
-                    </View>
-                </View>
+          <View className="bg-[#1e3a8a] rounded-t-3xl p-5 flex-row justify-between items-center">
+            <View>
+              <Text className="text-white text-lg font-black tracking-tight">Live Transparency Feed</Text>
+              <Text className="text-blue-200 text-[10px] font-bold uppercase">Real-time Quality Monitoring</Text>
             </View>
-            <View className="flex-1 ml-2 relative">
-                <View className="h-32 bg-gray-100 rounded-xl justify-center items-center overflow-hidden">
-                    <Image source={{uri: 'https://images.unsplash.com/photo-1528740561666-dc2479dc08ab?q=80&w=1000&auto=format&fit=crop'}} className="w-full h-full" resizeMode="cover" />
-                    <View className="absolute top-2 left-2 bg-red-600 px-2 py-0.5 rounded">
-                        <Text className="text-white font-black text-[8px]">LIVE</Text>
-                    </View>
-                    <View className="absolute bottom-0 bg-black/60 px-2 py-1 w-full">
-                        <Text className="text-white text-[10px] text-center font-bold">Packing Fresh Milk</Text>
-                    </View>
+          </View>
+          <View className="bg-white border border-gray-100 border-t-0 rounded-b-3xl overflow-hidden shadow-sm">
+            <View className="h-56 w-full bg-black">
+               {livestreams?.youtube_url ? (
+                 <YoutubePlayer
+                    height={230}
+                    play={false}
+                    videoId={livestreams.youtube_url.includes('v=') 
+                      ? livestreams.youtube_url.split('v=')[1]?.split('&')[0] 
+                      : livestreams.youtube_url.split('/').pop()}
+                 />
+               ) : (
+                 <View className="flex-1 justify-center items-center">
+                    <Icon name="videocam-off" size={48} color="#334155" />
+                    <Text className="text-gray-500 font-bold mt-2">Livestream offline</Text>
+                 </View>
+               )}
+            </View>
+            <View className="p-4 flex-row justify-between bg-blue-50/30">
+                <View className="items-center flex-1 border-r border-blue-100">
+                    <Text className="text-blue-900 font-black text-xs">Fat: {livestreams?.fat || '0'}%</Text>
+                    <Text className="text-[8px] font-bold text-gray-500 uppercase">Current Batch</Text>
+                </View>
+                <View className="items-center flex-1 border-r border-blue-100">
+                    <Text className="text-blue-900 font-black text-xs">SNF: {livestreams?.snf || '0'}%</Text>
+                    <Text className="text-[8px] font-bold text-gray-500 uppercase">Purity Level</Text>
+                </View>
+                <View className="items-center flex-1">
+                    <Text className="text-blue-900 font-black text-xs">Ph: {livestreams?.ph || '0'}</Text>
+                    <Text className="text-[8px] font-bold text-gray-500 uppercase">Freshness</Text>
                 </View>
             </View>
           </View>
@@ -252,43 +244,65 @@ const HomeScreen = ({ navigation }) => {
            
            <View className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
               <View className="flex-row justify-between mb-4">
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                  <Text key={d} className="text-xs font-black text-blue-900 w-8 text-center">{d}</Text>
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, index) => (
+                  <Text key={`${d}-${index}`} className="text-xs font-black text-blue-900 w-8 text-center">{d}</Text>
                 ))}
               </View>
               
               <View className="flex-row flex-wrap justify-between">
-                {[...Array(14)].map((_, i) => {
-                  const day = i + 1;
+                {[...Array(7)].map((_, i) => {
+                  const today = new Date();
+                  const startOfWeek = new Date(today);
+                  startOfWeek.setDate(today.getDate() - today.getDay());
+                  
+                  const targetDay = new Date(startOfWeek);
+                  targetDay.setDate(startOfWeek.getDate() + i);
+                  
+                  const dayNum = targetDay.getDate();
+                  const dateStr = targetDay.toISOString().split('T')[0];
+                  
+                  // Check if there was a delivery on this date
+                  const deliveryOnThisDay = orders.find(o => 
+                    o.orderType === 'Subscription-Generated' && 
+                    new Date(o.createdAt).toISOString().split('T')[0] === dateStr
+                  );
+                  
                   let bgClass = "bg-white";
                   let textClass = "text-gray-400";
                   let icon = null;
 
-                  if (day >= 8 && day <= 11) { // Delivered
-                    bgClass = "bg-green-600";
-                    textClass = "text-white";
-                    icon = "check-circle";
-                  } else if (day === 12) { // Missed
-                    bgClass = "bg-green-700/80";
-                    textClass = "text-white";
-                    icon = "block";
-                  } else if (day > 12 && day < 18) { // Scheduled
-                    bgClass = "bg-blue-600";
-                    textClass = "text-white";
-                  } else if (day === 19) { // Missed Red
+                  if (deliveryOnThisDay) {
+                    if (deliveryOnThisDay.status === 'Delivered') {
+                      bgClass = "bg-green-600";
+                      textClass = "text-white";
+                      icon = "check-circle";
+                    } else if (deliveryOnThisDay.status === 'Cancelled') {
                       bgClass = "bg-red-500";
                       textClass = "text-white";
+                      icon = "block";
+                    } else {
+                      bgClass = "bg-blue-600";
+                      textClass = "text-white";
+                    }
+                  } else if (targetDay < today) {
+                      // Past day with no delivery record
+                      bgClass = "bg-gray-100";
+                      textClass = "text-gray-300";
+                  } else if (targetDay.toDateString() === today.toDateString()) {
+                      // Today
+                      bgClass = "bg-blue-50 border-blue-200 border";
+                      textClass = "text-blue-900";
                   }
 
                   return (
-                    <View key={i} className={`w-9 h-9 items-center justify-center rounded-lg mb-2 ${bgClass} ${day >= 8 && day <= 14 ? 'shadow-sm' : 'border border-gray-50'}`}>
+                    <View key={i} className={`w-9 h-9 items-center justify-center rounded-lg mb-2 ${bgClass} shadow-sm`}>
                       {icon ? (
                         <View className="items-center">
-                          <Text className="text-[8px] font-black text-white">{day}</Text>
+                          <Text className="text-[8px] font-black text-white">{dayNum}</Text>
                           <Icon name={icon} size={10} color="white" />
                         </View>
                       ) : (
-                        <Text className={`text-xs font-bold ${textClass}`}>{day}</Text>
+                        <Text className={`text-xs font-bold ${textClass}`}>{dayNum}</Text>
                       )}
                     </View>
                   );
@@ -296,12 +310,18 @@ const HomeScreen = ({ navigation }) => {
               </View>
 
               <View className="flex-row justify-between mt-4">
-                 <TouchableOpacity className="flex-1 bg-blue-900 py-3 rounded-xl mr-2 items-center">
-                    <Text className="text-white text-xs font-black">Manage Subscription</Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity className="flex-1 bg-white border border-gray-200 py-3 rounded-xl ml-2 items-center">
-                    <Text className="text-gray-700 text-xs font-black">View History</Text>
-                 </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('Subscription')}
+                    className="flex-1 bg-blue-900 py-3 rounded-xl mr-2 items-center"
+                  >
+                     <Text className="text-white text-xs font-black">Manage Subscription</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('Subscription', { screen: 'Subscription', params: { tab: 'history' } })} 
+                    className="flex-1 bg-white border border-gray-200 py-3 rounded-xl ml-2 items-center"
+                  >
+                     <Text className="text-gray-700 text-xs font-black">View History</Text>
+                  </TouchableOpacity>
               </View>
            </View>
         </View>
@@ -317,75 +337,54 @@ const HomeScreen = ({ navigation }) => {
               <Text className="text-blue-900 font-black text-sm uppercase tracking-tighter">View All</Text>
             </TouchableOpacity>
           </View>
-          <FlatList
-            data={products}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                className="bg-white rounded-[32px] w-48 mr-5 overflow-hidden shadow-sm border border-gray-100"
-                onPress={() => navigation.navigate('Products', { product: item })}
-                activeOpacity={0.9}
-              >
-                <View className="h-40 bg-gray-50 relative">
-                  <Image 
-                    source={{ uri: item.image || 'https://cdn-icons-png.flaticon.com/512/3039/3039396.png' }} 
-                    className="w-full h-full" 
-                    resizeMode="cover"
-                  />
-                </View>
-                
-                <View className="p-5 pt-4">
-                  <Text className="text-base font-black text-blue-950 mb-1" numberOfLines={1}>{item.name}</Text>
-                  <Text className="text-lg font-black text-blue-900 mb-4">
-                    ₹{item.price} <Text className="text-xs font-bold text-gray-400">/ {item.unit}</Text>
-                  </Text>
+          {products.filter(p => p.category?.toLowerCase() === 'milk' || p.name?.toLowerCase().includes('milk')).length > 0 ? (
+            <FlatList
+              data={products.filter(p => p.category?.toLowerCase() === 'milk' || p.name?.toLowerCase().includes('milk'))}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  className="bg-white rounded-[32px] w-48 mr-5 overflow-hidden shadow-sm border border-gray-100"
+                  onPress={() => navigation.navigate('Products', { product: item })}
+                  activeOpacity={0.9}
+                >
+                  <View className="h-40 bg-gray-50 relative">
+                    <Image 
+                      source={{ uri: item.image || 'https://cdn-icons-png.flaticon.com/512/3039/3039396.png' }} 
+                      className="w-full h-full" 
+                      resizeMode="cover"
+                    />
+                  </View>
                   
-                  <TouchableOpacity 
-                    className="bg-blue-900 py-3 rounded-2xl items-center shadow-lg shadow-blue-200"
-                    onPress={() => navigation.navigate('Products', { product: item })}
-                  >
-                    <Text className="text-white text-xs font-black uppercase tracking-widest">
-                      Subscribe
+                  <View className="p-5 pt-4">
+                    <Text className="text-base font-black text-blue-950 mb-1" numberOfLines={1}>{item.name}</Text>
+                    <Text className="text-lg font-black text-blue-900 mb-4">
+                      ₹{item.price} <Text className="text-xs font-bold text-gray-400">/ {item.unit}</Text>
                     </Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            )}
-            keyExtractor={(item) => item._id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 15 }}
-          />
+                    
+                    <TouchableOpacity 
+                      className="bg-blue-900 py-3 rounded-2xl items-center shadow-lg shadow-blue-200"
+                      onPress={() => navigation.navigate('Products', { product: item })}
+                    >
+                      <Text className="text-white text-xs font-black uppercase tracking-widest">
+                        Subscribe
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              )}
+              keyExtractor={(item) => item._id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 15 }}
+            />
+          ) : (
+            <View className="px-6 py-10 bg-blue-50/50 rounded-3xl mx-6 items-center border border-blue-100 border-dashed">
+                <Icon name="info-outline" size={32} color="#1e3a8a" />
+                <Text className="text-blue-900 font-bold mt-2 text-center">No fresh milk products available currently. Check back soon!</Text>
+            </View>
+          )}
         </View>
 
-        {/* Upcoming Products (Image 3 style) */}
-        <View className="mt-8 px-6 pb-10">
-          <View className="mb-5">
-            <Text className="text-xl font-black text-blue-950 tracking-tight">Upcoming Products</Text>
-            <View className="h-1 w-12 bg-blue-900 mt-1 rounded-full" />
-          </View>
-          
-          <View className="flex-row justify-between flex-wrap">
-            {[
-              { name: 'Dahi', image: 'https://cdn-icons-png.flaticon.com/512/2311/2311894.png' },
-              { name: 'Paneer', image: 'https://cdn-icons-png.flaticon.com/512/5701/5701383.png' },
-              { name: 'Ghee', image: 'https://cdn-icons-png.flaticon.com/512/10753/10753086.png' },
-            ].map((prod) => (
-              <View 
-                key={prod.name} 
-                className="w-[30%] bg-white rounded-3xl p-3 border border-gray-100 shadow-sm items-center mb-4"
-              >
-                <View className="w-14 h-14 bg-gray-50 rounded-2xl items-center justify-center mb-2 overflow-hidden">
-                   <Image source={{ uri: prod.image }} className="w-10 h-10" />
-                </View>
-                <Text className="text-xs font-black text-blue-950 mb-3">{prod.name}</Text>
-                <TouchableOpacity className="bg-green-600 px-2 py-1.5 rounded-lg flex-row items-center">
-                  <Text className="text-[8px] font-black text-white uppercase">Notify Me</Text>
-                  <Icon name="check" size={10} color="white" style={{marginLeft: 2}} />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        </View>
+        {/* Upcoming Products removed as requested */}
       </ScrollView>
     </SafeAreaView>
   );

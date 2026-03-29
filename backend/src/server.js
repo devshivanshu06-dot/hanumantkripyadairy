@@ -11,6 +11,9 @@ const orderRoutes = require('./routes/orderRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const addressRoutes = require('./routes/addressRoutes');
 const bannerRoutes = require('./routes/bannerRoutes');
+const walletRoutes = require('./routes/walletRoutes');
+const customerRoutes = require('./routes/customerRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -25,7 +28,8 @@ app.use(cors({
   credentials: true,
   optionsSuccessStatus: 200
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -34,11 +38,14 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/banners', bannerRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/customer', customerRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'Server is running', 
+  res.json({
+    status: 'Server is running',
     timestamp: new Date().toISOString(),
     database: 'MongoDB'
   });
@@ -48,7 +55,7 @@ app.get('/health', (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   const status = err.status || 500;
-  res.status(status).json({ 
+  res.status(status).json({
     error: err.message || 'Internal server error',
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
@@ -56,7 +63,7 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ 
+  res.status(404).json({
     error: 'Route not found',
     path: req.path,
     method: req.method
@@ -69,7 +76,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  
+
   // Start the background cron job for orders
   startCronJob();
 });

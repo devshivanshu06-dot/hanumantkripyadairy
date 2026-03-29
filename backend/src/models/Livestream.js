@@ -1,17 +1,21 @@
 const mongoose = require('mongoose');
 
 const livestreamSchema = new mongoose.Schema({
-  analyzer_cam_url: {
+  youtube_url: {
     type: String,
     default: ''
   },
-  packing_cam_url: {
-    type: String,
-    default: ''
+  fat: {
+    type: Number,
+    default: 4.5
   },
-  combo_cam_url: {
-    type: String,
-    default: ''
+  snf: {
+    type: Number,
+    default: 8.5
+  },
+  ph: {
+    type: Number,
+    default: 6.7
   }
 }, {
   timestamps: true

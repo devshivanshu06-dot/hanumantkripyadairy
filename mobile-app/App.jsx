@@ -25,13 +25,16 @@ const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
+  const { user } = useAuth();
+  const walletBalance = user?.walletBalance || 0;
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === 'Home') iconName = 'home';
-          else if (route.name === 'My Orders') iconName = 'inventory-2';
+          else if (route.name === 'Subscription') iconName = 'event-repeat';
           else if (route.name === 'Wallet') iconName = 'account-balance-wallet';
           else if (route.name === 'Profile') iconName = 'person';
           
@@ -66,12 +69,12 @@ const TabNavigator = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="My Orders" component={MyOrdersScreen} />
+      <Tab.Screen name="Subscription" component={MyOrdersScreen} />
       <Tab.Screen 
         name="Wallet" 
         component={WalletScreen}
         options={{
-          tabBarLabel: '₹140 Wallet'
+          tabBarLabel: `Wallet`
         }}
       />
       <Tab.Screen name="Profile" component={ProfileScreen} />

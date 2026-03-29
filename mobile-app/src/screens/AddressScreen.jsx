@@ -9,16 +9,25 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  PermissionsAndroid
+  PermissionsAndroid,
+  Alert,
+  Modal,
+  Dimensions
 } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import MapView, { Marker, UrlTile, PROVIDER_GOOGLE } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../context/AuthContext';
 import { addressAPI } from '../utils/api';
-import { Modal, Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
+
+if (Platform.OS === 'android' && !MapView) {
+  console.warn('MapView native module is NOT available on this device');
+}
+if (!Geolocation) {
+  console.warn('Geolocation native module is NOT available on this device');
+}
 
 const AddressScreen = ({ navigation, route }) => {
   const { user } = useAuth();
@@ -112,7 +121,7 @@ const AddressScreen = ({ navigation, route }) => {
       if (data && data.address) {
         setFormData(prev => ({
           ...prev,
-          addressLine1: data.display_name.split(',').slice(0, 2).join(', ').trim(),
+          addressLine1: (data.display_name || '').split(',').slice(0, 2).join(', ').trim(),
           city: data.address.city || data.address.town || data.address.village || data.address.county || prev.city,
           state: data.address.state || prev.state,
           pincode: data.address.postcode || prev.pincode,
@@ -143,8 +152,11 @@ const AddressScreen = ({ navigation, route }) => {
   };
 
   const handleSelectSearchResult = (feature) => {
+    if (!feature || !feature.geometry || !feature.geometry.coordinates) {
+      return;
+    }
     const [lng, lat] = feature.geometry.coordinates;
-    const { name, city, state, postcode } = feature.properties;
+    const { name, city, state, postcode } = feature.properties || {};
     
     setCoordinates({ latitude: lat, longitude: lng });
     setMapRegion({
@@ -167,35 +179,62 @@ const AddressScreen = ({ navigation, route }) => {
   };
 
   const handleGetCurrentLocation = async () => {
-    const hasPermission = await requestLocationPermission();
-    if (!hasPermission) {
-      alert("Location permission denied");
-      return;
-    }
+    try {
+      if (!Geolocation) {
+        Alert.alert("Error", "Geolocation module is not available.");
+        return;
+      }
 
-    setFetchingLocation(true);
-    Geolocation.getCurrentPosition(
-      (position) => {
-        setCoordinates({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-        setMapRegion({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01
-        });
+      setFetchingLocation(true);
+      
+      const hasPermission = await requestLocationPermission();
+      if (!hasPermission) {
         setFetchingLocation(false);
-        fetchAddressFromCoordinates(position.coords.latitude, position.coords.longitude);
-        alert("Location captured & address updated!");
-      },
-      (error) => {
-        setFetchingLocation(false);
-        alert(error.message || "Failed to get location");
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
+        Alert.alert("Permission Error", "Location permission denied. Please enable it in settings.");
+        return;
+      }
+
+      Geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            console.log('Location success:', position.coords);
+            const { latitude, longitude } = position.coords;
+            setCoordinates({ latitude, longitude });
+            setMapRegion(prev => ({ ...prev, latitude, longitude }));
+            
+            // Set placeholder to allow saving immediately
+            if (!formData.addressLine1) {
+              setFormData(prev => ({
+                ...prev,
+                addressLine1: "Current Location",
+                city: "GPS Captured",
+                pincode: "000000"
+              }));
+            }
+            
+            // Re-fetch real address in the background
+            fetchAddressFromCoordinates(latitude, longitude);
+            setFetchingLocation(false);
+
+            // Give a hint to the user they can now just Save
+            Alert.alert("Success", "Location captured! You can now Confirm & Save.");
+          } catch (e) {
+            console.error('Success callback error:', e);
+            setFetchingLocation(false);
+          }
+        },
+        (error) => {
+          console.log('Location fetch error:', error);
+          setFetchingLocation(false);
+          Alert.alert("Location Error", error?.message || "Failed to get location.");
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      );
+    } catch (err) {
+      console.error('HandleGetCurrentLocation crash:', err);
+      setFetchingLocation(false);
+      Alert.alert("Error", "Something went wrong while detecting location.");
+    }
   };
 
   const handleMapConfirm = () => {
@@ -211,7 +250,7 @@ const AddressScreen = ({ navigation, route }) => {
 
   const handleSave = async () => {
     if (!formData.addressLine1 || !formData.city || !formData.pincode) {
-      alert("Please fill required fields (Address line 1, City, Pincode)");
+      Alert.alert("Required Fields", "Please fill required fields (Address line 1, City, Pincode)");
       return;
     }
 
@@ -231,7 +270,7 @@ const AddressScreen = ({ navigation, route }) => {
       
       navigation.goBack();
     } catch (error) {
-      alert(error.message || "Failed to save address");
+      Alert.alert("Error", error.message || "Failed to save address");
     } finally {
       setLoading(false);
     }
@@ -242,11 +281,11 @@ const AddressScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
-      <View className="flex-row items-center px-4 py-4 border-b border-gray-100 bg-white z-10">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="#1a1a1a" />
+      <View className="flex-row items-center px-6 py-4 border-b border-gray-50 bg-white z-10">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 bg-gray-50 rounded-2xl">
+          <Icon name="arrow-back-ios" size={20} color="#1e3a8a" />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900 ml-4">
+        <Text className="text-xl font-black text-blue-900 ml-4 tracking-tight">
           {existingAddress ? 'Edit Address' : 'Add New Address'}
         </Text>
       </View>
@@ -255,42 +294,44 @@ const AddressScreen = ({ navigation, route }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
       >
-        <ScrollView className="flex-1 bg-gray-50" bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView className="flex-1 bg-[#F8FAFC]" bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             
             {/* Search Section */}
-            <View className="p-4 bg-white mb-2 z-50">
-              <Text className="text-xs font-bold text-gray-400 mb-2 tracking-wider uppercase">Search your location</Text>
+            <View className="p-6 bg-white mb-2 z-50">
+              <Text className="text-[10px] font-black text-gray-400 mb-2 tracking-widest uppercase">Search your location</Text>
               <View className="relative">
-                <View className="flex-row items-center bg-gray-50 px-4 rounded-xl border border-gray-100">
-                  <Icon name="search" size={20} color="#9ca3af" />
+                <View className="flex-row items-center bg-gray-50 px-4 rounded-2xl border border-gray-100">
+                  <Icon name="search" size={20} color="#94a3b8" />
                   <TextInput
                     placeholder="Search area, street or city..."
                     value={searchQuery}
                     onChangeText={handleSearch}
-                    className="flex-1 h-12 ml-2 text-base font-medium text-gray-900"
-                    placeholderTextColor="#9ca3af"
+                    className="flex-1 h-14 ml-2 text-base font-bold text-blue-950"
+                    placeholderTextColor="#94a3b8"
                   />
                   {searchQuery.length > 0 && (
                     <TouchableOpacity onPress={() => { setSearchQuery(''); setSearchResults([]); setShowSearchResults(false); }}>
-                      <Icon name="close" size={20} color="#9ca3af" />
+                      <Icon name="close" size={20} color="#94a3b8" />
                     </TouchableOpacity>
                   )}
                 </View>
 
                 {showSearchResults && searchResults.length > 0 && (
-                  <View className="absolute top-14 left-0 right-0 bg-white rounded-2xl shadow-xl border border-gray-100 z-50">
+                  <View className="absolute top-16 left-0 right-0 bg-white rounded-3xl shadow-2xl border border-gray-100 z-50">
                     {searchResults.map((item, index) => (
                       <TouchableOpacity 
                         key={index}
                         onPress={() => handleSelectSearchResult(item)}
                         className={`p-4 flex-row items-center ${index !== searchResults.length - 1 ? 'border-b border-gray-50' : ''}`}
                       >
-                        <Icon name="location-on" size={18} color="#1e3a8a" />
+                        <View className="w-8 h-8 rounded-full bg-blue-50 items-center justify-center">
+                          <Icon name="location-on" size={16} color="#1e3a8a" />
+                        </View>
                         <View className="ml-3 flex-1">
-                          <Text className="text-sm font-bold text-gray-900" numberOfLines={1}>
+                          <Text className="text-sm font-black text-blue-950" numberOfLines={1}>
                             {item.properties.name}
                           </Text>
-                          <Text className="text-xs text-gray-500" numberOfLines={1}>
+                          <Text className="text-[10px] font-bold text-gray-400" numberOfLines={1}>
                             {[item.properties.city, item.properties.state, item.properties.country].filter(Boolean).join(', ')}
                           </Text>
                         </View>
@@ -302,8 +343,8 @@ const AddressScreen = ({ navigation, route }) => {
             </View>
 
             {/* Location Section */}
-            <View className="p-4 bg-white mb-2">
-              <View className="flex-row gap-2 mt-3 mb-2">
+            <View className="p-6 bg-white mb-2">
+              <View className="flex-row gap-3">
                 <TouchableOpacity 
                   onPress={handleGetCurrentLocation}
                   disabled={fetchingLocation}
@@ -314,8 +355,8 @@ const AddressScreen = ({ navigation, route }) => {
                   ) : (
                     <>
                       <Icon name="my-location" size={20} color="#1e3a8a" />
-                      <Text className="ml-2 font-bold text-blue-900 text-xs text-center">
-                        {hasCoordinates ? 'Update Location' : 'Current Location'}
+                      <Text className="ml-2 font-black text-blue-900 text-xs tracking-tight">
+                        {hasCoordinates ? 'Update PIN' : 'Auto Detect'}
                       </Text>
                     </>
                   )}
@@ -325,122 +366,101 @@ const AddressScreen = ({ navigation, route }) => {
                   onPress={() => setShowMapModal(true)}
                   className="flex-1 flex-row items-center justify-center py-4 bg-gray-50 rounded-2xl border border-gray-200"
                 >
-                  <Icon name="map" size={20} color="#4b5563" />
-                  <Text className="ml-2 font-bold text-gray-700 text-xs text-center">
-                    Select via Map Drop
+                  <Icon name="map" size={20} color="#475569" />
+                  <Text className="ml-2 font-black text-slate-600 text-xs tracking-tight">
+                    Select on Map
                   </Text>
                 </TouchableOpacity>
               </View>
 
               {hasCoordinates && !fetchingLocation && (
-                <View className="mt-2 flex-row items-center justify-center bg-green-50 py-2 rounded-xl">
+                <View className="mt-4 flex-row items-center justify-center bg-green-50 py-3 rounded-2xl border border-green-100">
                   <Icon name="check-circle" size={16} color="#10b981" />
-                  <Text className="ml-1 text-xs text-green-600 font-medium">
-                    Lat: {coordinates.latitude.toFixed(4)}, Lng: {coordinates.longitude.toFixed(4)}
+                  <Text className="ml-2 text-[10px] text-green-700 font-black uppercase">
+                    Location Secured
                   </Text>
                 </View>
               )}
             </View>
 
             {/* Form Section */}
-            <View className="p-4 bg-white min-h-screen">
+            <View className="p-6 bg-white min-h-screen">
                 
-                {/* Labels */}
-                <Text className="text-xs font-bold text-gray-400 mb-3 tracking-wider">SAVE THIS ADDRESS AS</Text>
-                <View className="flex-row gap-3 mb-6">
+                <Text className="text-[10px] font-black text-gray-400 mb-4 tracking-widest uppercase">Save address as</Text>
+                <View className="flex-row gap-3 mb-8">
                     {labels.map(lbl => (
                         <TouchableOpacity
                             key={lbl}
                             onPress={() => setFormData({...formData, label: lbl})}
-                            className={`px-5 py-2 rounded-xl border ${formData.label === lbl ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200'}`}
+                            className={`px-6 py-2.5 rounded-2xl border-2 ${formData.label === lbl ? 'bg-blue-900 border-blue-900' : 'bg-white border-gray-100'}`}
                         >
-                            <Text className={`font-bold text-sm ${formData.label === lbl ? 'text-blue-900' : 'text-gray-600'}`}>{lbl}</Text>
+                            <Text className={`font-black text-sm ${formData.label === lbl ? 'text-white' : 'text-gray-400'}`}>{lbl}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
 
-                {/* Inputs */}
-                <View className="space-y-4">
+                <View className="space-y-5">
                     <View>
+                        <Text className="text-[10px] font-black text-blue-900 mb-2 ml-1 uppercase tracking-widest">Complete Address *</Text>
                         <TextInput 
-                            placeholder="Complete Address (House No, Building, Street) *"
+                            placeholder="House No, Building, Street"
                             value={formData.addressLine1}
                             onChangeText={t => setFormData({...formData, addressLine1: t})}
-                            className="bg-gray-50 px-4 py-3.5 rounded-xl border border-gray-100/50 text-base font-medium text-gray-900"
-                            placeholderTextColor="#9ca3af"
+                            className="bg-gray-50 px-5 py-4 rounded-2xl border border-gray-100 text-base font-bold text-blue-950"
+                            placeholderTextColor="#94a3b8"
                         />
                     </View>
                     
                     <View>
+                        <Text className="text-[10px] font-black text-gray-400 mb-2 ml-1 uppercase tracking-widest">Floor / Tower</Text>
                         <TextInput 
-                            placeholder="Floor / Tower (Optional)"
+                            placeholder="Optional"
                             value={formData.addressLine2}
                             onChangeText={t => setFormData({...formData, addressLine2: t})}
-                            className="bg-gray-50 px-4 py-3.5 rounded-xl border border-gray-100/50 text-base font-medium text-gray-900"
-                            placeholderTextColor="#9ca3af"
+                            className="bg-gray-50 px-5 py-4 rounded-2xl border border-gray-100 text-base font-bold text-blue-950"
+                            placeholderTextColor="#94a3b8"
                         />
                     </View>
 
-                    <View>
-                        <TextInput 
-                            placeholder="Nearby Landmark (Optional)"
-                            value={formData.landmark}
-                            onChangeText={t => setFormData({...formData, landmark: t})}
-                            className="bg-gray-50 px-4 py-3.5 rounded-xl border border-gray-100/50 text-base font-medium text-gray-900"
-                            placeholderTextColor="#9ca3af"
-                        />
-                    </View>
-
-                    <View className="flex-row gap-3">
-                        <View className="flex-1 border-r border-gray-100 pr-3">
+                    <View className="flex-row gap-4">
+                        <View className="flex-1">
+                            <Text className="text-[10px] font-black text-blue-900 mb-2 ml-1 uppercase tracking-widest">City *</Text>
                             <TextInput 
-                                placeholder="City *"
+                                placeholder="City"
                                 value={formData.city}
                                 onChangeText={t => setFormData({...formData, city: t})}
-                                className="bg-gray-50 px-4 py-3.5 rounded-xl border border-gray-100/50 text-base font-medium text-gray-900"
-                                placeholderTextColor="#9ca3af"
+                                className="bg-gray-50 px-5 py-4 rounded-2xl border border-gray-100 text-base font-bold text-blue-950"
                             />
                         </View>
                         <View className="flex-1">
+                            <Text className="text-[10px] font-black text-blue-900 mb-2 ml-1 uppercase tracking-widest">Pincode *</Text>
                             <TextInput 
-                                placeholder="State"
-                                value={formData.state}
-                                onChangeText={t => setFormData({...formData, state: t})}
-                                className="bg-gray-50 px-4 py-3.5 rounded-xl border border-gray-100/50 text-base font-medium text-gray-900"
-                                placeholderTextColor="#9ca3af"
-                            />
-                        </View>
-                        <View className="flex-1">
-                            <TextInput 
-                                placeholder="Pincode *"
+                                placeholder="Pincode"
                                 value={formData.pincode}
                                 keyboardType="number-pad"
                                 maxLength={6}
                                 onChangeText={t => setFormData({...formData, pincode: t})}
-                                className="bg-gray-50 px-4 py-3.5 rounded-xl border border-gray-100/50 text-base font-medium text-gray-900"
-                                placeholderTextColor="#9ca3af"
+                                className="bg-gray-50 px-5 py-4 rounded-2xl border border-gray-100 text-base font-bold text-blue-950"
                             />
                         </View>
                     </View>
                 </View>
 
-                {/* Save Button */}
                 <TouchableOpacity 
-                    className="bg-blue-900 py-4 rounded-2xl items-center flex-row justify-center mt-10 mb-8 shadow-sm"
+                    className="bg-blue-900 py-5 rounded-[24px] items-center flex-row justify-center mt-12 mb-10 shadow-xl shadow-blue-200"
                     onPress={handleSave}
                     disabled={loading}
                 >
                     {loading ? (
                         <ActivityIndicator color="white" />
                     ) : (
-                        <Text className="text-white text-[17px] font-bold">Save Address</Text>
+                        <Text className="text-white text-lg font-black uppercase tracking-widest">Confirm & Save</Text>
                     )}
                 </TouchableOpacity>
 
             </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
       {/* Map Modal (Zomato-style flow) */}
       <Modal visible={showMapModal} animationType="slide" transparent={false}>
         <SafeAreaView className="flex-1 bg-white">
@@ -453,26 +473,32 @@ const AddressScreen = ({ navigation, route }) => {
             </Text>
           </View>
           <View className="flex-1 bg-gray-100 relative">
-            <MapView
-              style={{ flex: 1 }}
-              initialRegion={{
-                ...mapRegion,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-              onRegionChangeComplete={(region) => {
-                setMapRegion(region);
-                // Auto-fetch address when map drag ends (Zomato-style)
-                fetchAddressFromCoordinates(region.latitude, region.longitude);
-              }}
-            >
-              {/* 100% Free OpenStreetMap Surface */}
-              <UrlTile
-                urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                maximumZ={19}
-                flipY={false}
-              />
-            </MapView>
+            {showMapModal && MapView ? (
+              <MapView
+                style={{ flex: 1 }}
+                provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                initialRegion={{
+                  ...mapRegion,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+                onRegionChangeComplete={(region) => {
+                  setMapRegion(region);
+                  fetchAddressFromCoordinates(region.latitude, region.longitude);
+                }}
+              >
+                <UrlTile
+                  urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  maximumZ={19}
+                  flipY={false}
+                />
+              </MapView>
+            ) : (
+              <View className="flex-1 items-center justify-center bg-gray-50 p-10">
+                <Icon name="error-outline" size={48} color="#94a3b8" />
+                <Text className="text-gray-400 font-bold mt-4 text-center">Map Module Unavailable</Text>
+              </View>
+            )}
 
             {/* Fixed Central Pin drops at map center */}
             <View pointerEvents="none" style={{ position: 'absolute', top: '50%', left: '50%', marginLeft: -24, marginTop: -48, zIndex: 10 }}>
@@ -493,7 +519,7 @@ const AddressScreen = ({ navigation, route }) => {
                            {formData.city}, {formData.pincode}
                        </Text>
                        <Text className="text-gray-300 text-[10px]">
-                           {mapRegion.latitude.toFixed(4)}, {mapRegion.longitude.toFixed(4)}
+                           {(mapRegion.latitude || 0).toFixed(4)}, {(mapRegion.longitude || 0).toFixed(4)}
                        </Text>
                    </View>
                </View>
@@ -508,7 +534,6 @@ const AddressScreen = ({ navigation, route }) => {
           </View>
         </SafeAreaView>
       </Modal>
-
     </SafeAreaView>
   );
 };

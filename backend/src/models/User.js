@@ -44,7 +44,12 @@ const userSchema = new mongoose.Schema({
     default: true
   },
   otp: String,
-  otp_expires_at: Date
+  otp_expires_at: Date,
+  walletBalance: {
+    type: Number,
+    default: 0,
+    min: 0
+  }
 }, {
   timestamps: true
 });

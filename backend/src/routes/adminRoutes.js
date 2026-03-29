@@ -13,6 +13,6 @@ router.put('/bookings/:id', updateBooking);
 router.get('/milk-report', getMilkReport);
 router.get('/ledger', getLedger);
 router.post('/ledger', addLedgerEntry);
-router.put('/livestreams', updateLivestreams);
+router.post('/livestreams', updateLivestreams);
 
 module.exports = router;

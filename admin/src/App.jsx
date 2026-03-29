@@ -9,6 +9,7 @@ import Orders from './components/Orders/Orders';
 import Users from './components/Users/Users';
 import Ledger from './components/Ledger/Ledger';
 import Banners from './components/Banners/Banners';
+import Livestreams from './components/Livestreams/Livestreams';
 import Dashboard from './components/Dashboard/Dashboard';
 import Layout from './components/Layout/Layout';
 
@@ -34,6 +35,7 @@ function App() {
             <Route path="users" element={<Users />} />
             <Route path="ledger" element={<Ledger />} />
             <Route path="banners" element={<Banners />} />
+            <Route path="livestreams" element={<Livestreams />} />
           </Route>
         </Routes>
       </Router>
