@@ -9,7 +9,7 @@ const verifyToken = async (req, res, next, requiredRole = null) => {
       return res.status(401).json({ error: 'Access denied. No token provided.' });
     }
 
-    const secret = process.env.JWT_SECRET || 'your_jwt_secret_key_change_in_production';
+    const secret = process.env.JWT_SECRET;
     const decoded = jwt.verify(token, secret);
     const user = await User.findById(decoded.id).select('-otp -otp_expires_at');
 

@@ -148,8 +148,8 @@ exports.adminLogin = async (req, res) => {
 
     console.log(phone,password,'kjd')
 
-    const adminPhone = process.env.ADMIN_PHONE || '9999999999';
-    const adminPassword = process.env.ADMIN_PASSWORD || '555555';
+    const adminPhone = process.env.ADMIN_PHONE;
+    const adminPassword = process.env.ADMIN_PASSWORD;
 
     if (phone !== adminPhone || password !== adminPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
