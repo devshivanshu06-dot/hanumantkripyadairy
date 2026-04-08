@@ -17,9 +17,16 @@ import AddressScreen from './src/screens/AddressScreen';
 import CategoryScreen from './src/screens/CategoryScreen';
 import MyOrdersScreen from './src/screens/MyOrdersScreen';
 import WalletScreen from './src/screens/WalletScreen';
+import SubscriptionConfirmScreen from './src/screens/SubscriptionConfirmScreen';
+import SignupScreen from './src/screens/SignupScreen';
+import SupportScreen from './src/screens/SupportScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
+import AboutScreen from './src/screens/AboutScreen';
 
 // Import Contexts
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { requestUserPermission, getFCMToken, notificationListener } from './src/services/notificationService';
+import { useNavigation } from '@react-navigation/native';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -34,7 +41,7 @@ const TabNavigator = () => {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === 'Home') iconName = 'home';
-          else if (route.name === 'Subscription') iconName = 'event-repeat';
+          else if (route.name === 'Delivery') iconName = 'event-repeat';
           else if (route.name === 'Wallet') iconName = 'account-balance-wallet';
           else if (route.name === 'Profile') iconName = 'person';
           
@@ -69,7 +76,7 @@ const TabNavigator = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Subscription" component={MyOrdersScreen} />
+      <Tab.Screen name="Delivery" component={MyOrdersScreen} />
       <Tab.Screen 
         name="Wallet" 
         component={WalletScreen}
@@ -93,6 +100,7 @@ const MainStack = () => {
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="OTP" component={OTPScreen} />
+          <Stack.Screen name="Signup" component={SignupScreen} />
         </>
       ) : (
         <>
@@ -101,10 +109,37 @@ const MainStack = () => {
           <Stack.Screen name="Addresses" component={AddressesScreen} />
           <Stack.Screen name="Address" component={AddressScreen} />
           <Stack.Screen name="Category" component={CategoryScreen} />
+          <Stack.Screen name="SubscriptionConfirm" component={SubscriptionConfirmScreen} />
+          <Stack.Screen name="Support" component={SupportScreen} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
+          <Stack.Screen name="About" component={AboutScreen} />
         </>
       )}
     </Stack.Navigator>
   );
+};
+
+const NotificationHandler = ({ children }) => {
+  const { user } = useAuth();
+  const navigation = useNavigation();
+
+  React.useEffect(() => {
+    const setupNotifications = async () => {
+      const hasPermission = await requestUserPermission();
+      if (hasPermission && user) {
+        await getFCMToken();
+      }
+    };
+
+    setupNotifications();
+
+    if (user) {
+      const unsubscribe = notificationListener(navigation);
+      return unsubscribe;
+    }
+  }, [user, navigation]);
+
+  return children;
 };
 
 const App = () => {
@@ -112,7 +147,9 @@ const App = () => {
     <SafeAreaProvider>
       <AuthProvider>
         <NavigationContainer>
-          <MainStack />
+          <NotificationHandler>
+            <MainStack />
+          </NotificationHandler>
         </NavigationContainer>
       </AuthProvider>
     </SafeAreaProvider>

@@ -16,6 +16,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { walletAPI } from '../utils/api';
+import { RAZORPAY_KEY_ID } from '@env';
 
 const WalletScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -27,8 +28,7 @@ const WalletScreen = ({ navigation }) => {
   const [isAddingMoney, setIsAddingMoney] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null); // 'failed' or null
 
-  // Replace with your actual Razorpay Key ID
-  const RAZORPAY_KEY_ID = 'rzp_test_SVVehhmIpRbcIe';
+  // Razorpay key is loaded from environment variables
 
   useEffect(() => {
     fetchWalletData();

@@ -119,14 +119,77 @@ const processDailySubscriptions = async () => {
   }
 };
 
+const { sendPushNotification } = require('./notificationService');
+
+const checkLowBalanceAndNotify = async () => {
+  console.log('Running low balance check job...');
+  try {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+
+    // Find all active subscriptions
+    const activeSubs = await Subscription.find({
+      status: 'active',
+      startDate: { $lte: tomorrow },
+      $or: [
+        { pausedUntil: null },
+        { pausedUntil: { $lt: tomorrow } }
+      ]
+    }).populate('product');
+
+    // Group by user and calculate tomorrow's cost
+    const userCosts = {};
+    for (const sub of activeSubs) {
+      // Skip logic (same as order generation)
+      const isSkipDate = sub.skipDates.some(skip => new Date(skip).toDateString() === tomorrow.toDateString());
+      if (isSkipDate) continue;
+
+      if (sub.frequency === 'alternate') {
+        const daysDiff = Math.floor((tomorrow - new Date(sub.startDate)) / (1000 * 60 * 60 * 24));
+        if (daysDiff % 2 !== 0) continue;
+      }
+
+      const userId = sub.user.toString();
+      const cost = sub.quantity * sub.product.price;
+      userCosts[userId] = (userCosts[userId] || 0) + cost;
+    }
+
+    // Check each user's balance
+    for (const [userId, tomorrowCost] of Object.entries(userCosts)) {
+      const user = await User.findById(userId);
+      if (user && user.walletBalance < tomorrowCost) {
+        console.log(`Notifying user ${user.phone} about low balance: ₹${user.walletBalance} < ₹${tomorrowCost}`);
+        await sendPushNotification(
+          userId,
+          'Low Wallet Balance 🪹',
+          `Your balance (₹${user.walletBalance.toFixed(2)}) is insufficient for tomorrow's delivery (₹${tomorrowCost.toFixed(2)}). Please recharge to avoid interruption.`,
+          { screen: 'Wallet', type: 'low_balance_alert' }
+        );
+      }
+    }
+    console.log('Low balance check job completed.');
+  } catch (error) {
+    console.error('Error in low balance check job:', error);
+  }
+};
+
 // Schedule it to run at 2 AM every night
 const startCronJob = () => {
+  // Order generation at 2 AM
   cron.schedule('0 2 * * *', () => {
     processDailySubscriptions().catch(err => console.error(err));
+  });
+
+  // Low balance check at 8 PM (20:00)
+  cron.schedule('0 20 * * *', () => {
+    checkLowBalanceAndNotify().catch(err => console.error(err));
   });
 };
 
 module.exports = {
   processDailySubscriptions,
+  checkLowBalanceAndNotify,
   startCronJob
 };
+

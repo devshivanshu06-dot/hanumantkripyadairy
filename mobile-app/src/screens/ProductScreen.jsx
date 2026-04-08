@@ -21,26 +21,13 @@ const ProductScreen = ({ navigation, route }) => {
 
 
 
-  const handleSubscribe = async () => {
-    setLoading(true);
-    try {
-      const subData = {
-        product: product._id,
-        quantity,
-        frequency,
-        timeSlot,
-        startDate: new Date(),
-      };
-      await subscriptionAPI.createSubscription(subData);
-      Alert.alert('Success', 'Subscription active! Fresh milk will reach you daily.', [
-        { text: 'My Subscriptions', onPress: () => navigation.navigate('Schedule') },
-        { text: 'OK' }
-      ]);
-    } catch (error) {
-      Alert.alert('Error', error.response?.data?.error || 'Failed to create subscription');
-    } finally {
-      setLoading(false);
-    }
+  const handleSubscribe = () => {
+    navigation.navigate('SubscriptionConfirm', {
+      product,
+      quantity,
+      frequency,
+      timeSlot
+    });
   };
 
   if (!product) {

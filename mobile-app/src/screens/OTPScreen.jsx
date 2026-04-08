@@ -56,7 +56,14 @@ const OTPScreen = ({ navigation, route }) => {
     try {
       const response = await authAPI.verifyOTP(phoneNumber, otpString);
       if (response.data.success) {
-        await login(response.data.token, response.data.user);
+        if (response.data.isNewUser) {
+          navigation.navigate('Signup', { 
+            token: response.data.token, 
+            user: response.data.user 
+          });
+        } else {
+          await login(response.data.token, response.data.user);
+        }
       }
     } catch (error) {
       Alert.alert('Error', error.response?.data?.error || 'Verification failed');

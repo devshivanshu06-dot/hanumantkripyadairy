@@ -55,7 +55,9 @@ export const adminAPI = {
   updateOrderStatus: (id, status) => api.put(`/orders/${id}/status`, { status }),
 
   // Customers
-  getCustomers: () => api.get('/auth/admin/users'), // Need to add this route or similar
+  getCustomers: () => api.get('/admin/customers'),
+  getCustomerDetails: (id) => api.get(`/admin/customers/${id}`),
+  updateCustomer: (id, data) => api.put(`/admin/customers/${id}`, data),
 
   // Banners
   getBanners: () => api.get('/banners'),
@@ -64,6 +66,7 @@ export const adminAPI = {
   deleteBanner: (id) => api.delete(`/banners/${id}`),
 
   // Ledger
+  getLedger: (params) => api.get('/admin/ledger', { params }),
   addLedgerEntry: (data) => api.post('/ledger', data),
 
   // Livestreams

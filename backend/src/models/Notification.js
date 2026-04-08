@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 
 const notificationSchema = new mongoose.Schema({
-  user_id: {
+  user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    default: null
+    required: true
   },
   title: {
     type: String,
@@ -16,15 +16,21 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['info', 'warning', 'success', 'error'],
-    default: 'info'
+    enum: ['low_balance', 'order_update', 'wallet_update', 'general'],
+    default: 'general'
   },
-  is_read: {
+  isRead: {
     type: Boolean,
     default: false
+  },
+  data: {
+    type: Object,
+    default: {}
   }
 }, {
   timestamps: true
 });
+
+notificationSchema.index({ user: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

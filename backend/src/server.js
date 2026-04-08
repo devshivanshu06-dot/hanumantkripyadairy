@@ -14,6 +14,7 @@ const bannerRoutes = require('./routes/bannerRoutes');
 const walletRoutes = require('./routes/walletRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api/banners', bannerRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

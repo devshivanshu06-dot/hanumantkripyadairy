@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const { generateOTP, isOTPExpired, generateToken } = require('../utils/helpers');
+const { sendMSG91OTP } = require('../services/msg91Service');
 
 exports.sendOTP = async (req, res) => {
   try {
@@ -9,7 +10,8 @@ exports.sendOTP = async (req, res) => {
       return res.status(400).json({ error: 'Invalid phone number' });
     }
 
-    const otp = '000000';
+    const isTestAccount = phone === '9999999999';
+    const otp = isTestAccount ? '000000' : generateOTP();
     const otpExpiresAt = new Date(Date.now() + 10 * 60000);
 
     let user = await User.findOne({ phone });
@@ -28,10 +30,15 @@ exports.sendOTP = async (req, res) => {
       });
     }
 
-    // In production, send OTP via SMS service
-    console.log(`OTP for ${phone}: ${otp}`);
+    // Send OTP via SMS service MSG91
+    if (!isTestAccount) {
+      console.log(`Sending OTP for ${phone}...`);
+      await sendMSG91OTP(phone, otp);
+    } else {
+      console.log(`Skipping MSG91 for test account ${phone}`);
+    }
 
-    res.json({ success: true, message: 'OTP sent successfully', otp });
+    res.json({ success: true, message: 'OTP sent successfully' });
   } catch (error) {
     console.error('Send OTP error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -60,6 +67,8 @@ exports.verifyOTP = async (req, res) => {
       return res.status(400).json({ error: 'OTP expired' });
     }
 
+    const isNewUser = user.name === `User ${user.phone}` || !user.is_verified;
+
     user.is_verified = true;
     user.otp = undefined;
     user.otp_expires_at = undefined;
@@ -70,6 +79,7 @@ exports.verifyOTP = async (req, res) => {
     res.json({
       success: true,
       token,
+      isNewUser,
       user: {
         id: user._id,
         name: user.name,
@@ -96,9 +106,38 @@ exports.getProfile = async (req, res) => {
       created_at: user.createdAt,
       address: user.address,
       addresses: user.addresses,
+      walletBalance: user.walletBalance,
     });
   } catch (error) {
     console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (name) user.name = name;
+    // You can add email to schema if needed, for now just name
+    await user.save();
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        phone: user.phone,
+        role: user.role,
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -155,6 +194,25 @@ exports.getUsers = async (req, res) => {
     res.json(users);
   } catch (error) {
     console.error('Get users error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+exports.updateFCMToken = async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.fcmToken = fcmToken;
+    await user.save();
+
+    res.json({ success: true, message: 'FCM token updated successfully' });
+  } catch (error) {
+    console.error('Update FCM token error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

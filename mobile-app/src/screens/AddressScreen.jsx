@@ -15,10 +15,11 @@ import {
   Dimensions
 } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
-import MapView, { Marker, UrlTile, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../context/AuthContext';
 import { addressAPI } from '../utils/api';
+import { GOOGLE_MAPS_API_KEY } from '@env';
 
 const { width, height } = Dimensions.get('window');
 
@@ -111,20 +112,23 @@ const AddressScreen = ({ navigation, route }) => {
 
   const fetchAddressFromCoordinates = async (lat, lng) => {
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`, {
-        headers: {
-          'User-Agent': 'HanumantDairyApp/1.0',
-          'Accept-Language': 'en-US,en;q=0.9'
-        }
-      });
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
+      );
       const data = await response.json();
-      if (data && data.address) {
+      if (data && data.status === 'OK' && data.results.length > 0) {
+        const result = data.results[0];
+        const addressComponents = result.address_components;
+        
+        const getComponent = (type) => 
+          addressComponents.find(c => c.types.includes(type))?.long_name || '';
+
         setFormData(prev => ({
           ...prev,
-          addressLine1: (data.display_name || '').split(',').slice(0, 2).join(', ').trim(),
-          city: data.address.city || data.address.town || data.address.village || data.address.county || prev.city,
-          state: data.address.state || prev.state,
-          pincode: data.address.postcode || prev.pincode,
+          addressLine1: result.formatted_address.split(',').slice(0, 2).join(', ').trim(),
+          city: getComponent('locality') || getComponent('administrative_area_level_2'),
+          state: getComponent('administrative_area_level_1'),
+          pincode: getComponent('postal_code') || prev.pincode,
         }));
       }
     } catch (error) {
@@ -136,10 +140,12 @@ const AddressScreen = ({ navigation, route }) => {
     setSearchQuery(query);
     if (query.length > 2) {
       try {
-        const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`);
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_API_KEY}&components=country:in`
+        );
         const data = await response.json();
-        if (data && data.features) {
-          setSearchResults(data.features);
+        if (data && data.predictions) {
+          setSearchResults(data.predictions);
           setShowSearchResults(true);
         }
       } catch (error) {
@@ -151,31 +157,48 @@ const AddressScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleSelectSearchResult = (feature) => {
-    if (!feature || !feature.geometry || !feature.geometry.coordinates) {
-      return;
+  const handleSelectSearchResult = async (prediction) => {
+    if (!prediction || !prediction.place_id) return;
+    
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.place_id}&key=${GOOGLE_MAPS_API_KEY}`
+      );
+      const data = await response.json();
+      
+      if (data && data.status === 'OK') {
+        const { location } = data.result.geometry;
+        const addressComponents = data.result.address_components;
+        
+        const getComponent = (type) => 
+          addressComponents.find(c => c.types.includes(type))?.long_name || '';
+
+        const lat = location.lat;
+        const lng = location.lng;
+        
+        setCoordinates({ latitude: lat, longitude: lng });
+        setMapRegion({
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005
+        });
+        
+        setFormData(prev => ({
+          ...prev,
+          addressLine1: prediction.structured_formatting.main_text,
+          city: getComponent('locality') || getComponent('administrative_area_level_2'),
+          state: getComponent('administrative_area_level_1'),
+          pincode: getComponent('postal_code') || prev.pincode
+        }));
+        
+        setShowSearchResults(false);
+        setSearchQuery(prediction.description);
+      }
+    } catch (error) {
+      console.error('Place details error:', error);
+      Alert.alert("Error", "Could not fetch place details");
     }
-    const [lng, lat] = feature.geometry.coordinates;
-    const { name, city, state, postcode } = feature.properties || {};
-    
-    setCoordinates({ latitude: lat, longitude: lng });
-    setMapRegion({
-      latitude: lat,
-      longitude: lng,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01
-    });
-    
-    setFormData(prev => ({
-      ...prev,
-      addressLine1: name || prev.addressLine1,
-      city: city || prev.city,
-      state: state || prev.state,
-      pincode: postcode || prev.pincode
-    }));
-    
-    setShowSearchResults(false);
-    setSearchQuery(name || '');
   };
 
   const handleGetCurrentLocation = async () => {
@@ -329,10 +352,10 @@ const AddressScreen = ({ navigation, route }) => {
                         </View>
                         <View className="ml-3 flex-1">
                           <Text className="text-sm font-black text-blue-950" numberOfLines={1}>
-                            {item.properties.name}
+                            {item.structured_formatting?.main_text || item.description}
                           </Text>
                           <Text className="text-[10px] font-bold text-gray-400" numberOfLines={1}>
-                            {[item.properties.city, item.properties.state, item.properties.country].filter(Boolean).join(', ')}
+                            {item.structured_formatting?.secondary_text || ''}
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -476,7 +499,7 @@ const AddressScreen = ({ navigation, route }) => {
             {showMapModal && MapView ? (
               <MapView
                 style={{ flex: 1 }}
-                provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                provider={PROVIDER_GOOGLE}
                 initialRegion={{
                   ...mapRegion,
                   latitudeDelta: 0.01,
@@ -486,13 +509,7 @@ const AddressScreen = ({ navigation, route }) => {
                   setMapRegion(region);
                   fetchAddressFromCoordinates(region.latitude, region.longitude);
                 }}
-              >
-                <UrlTile
-                  urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  maximumZ={19}
-                  flipY={false}
-                />
-              </MapView>
+              />
             ) : (
               <View className="flex-1 items-center justify-center bg-gray-50 p-10">
                 <Icon name="error-outline" size={48} color="#94a3b8" />

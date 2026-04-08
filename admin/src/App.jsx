@@ -6,7 +6,7 @@ import Login from './components/Auth/Login';
 import Products from './components/Products/Products';
 import Subscriptions from './components/Subscriptions/Subscriptions';
 import Orders from './components/Orders/Orders';
-import Users from './components/Users/Users';
+import Users from './components/Customers/Customers';
 import Ledger from './components/Ledger/Ledger';
 import Banners from './components/Banners/Banners';
 import Livestreams from './components/Livestreams/Livestreams';

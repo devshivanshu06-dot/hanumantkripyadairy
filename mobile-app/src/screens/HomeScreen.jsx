@@ -135,7 +135,10 @@ const HomeScreen = ({ navigation }) => {
             Hanumant Kripa Dairy
           </Text>
         </View>
-        <TouchableOpacity className="p-2 bg-gray-50 rounded-full border border-gray-100">
+        <TouchableOpacity 
+          className="p-2 bg-gray-50 rounded-full border border-gray-100"
+          onPress={() => navigation.navigate('Notifications')}
+        >
           <Icon name="notifications" size={24} color="#1e3a8a" />
           <View className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
         </TouchableOpacity>
@@ -311,16 +314,16 @@ const HomeScreen = ({ navigation }) => {
 
               <View className="flex-row justify-between mt-4">
                   <TouchableOpacity 
-                    onPress={() => navigation.navigate('Subscription')}
+                    onPress={() => navigation.navigate('Delivery')}
                     className="flex-1 bg-blue-900 py-3 rounded-xl mr-2 items-center"
                   >
                      <Text className="text-white text-xs font-black">Manage Subscription</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    onPress={() => navigation.navigate('Subscription', { screen: 'Subscription', params: { tab: 'history' } })} 
+                    onPress={() => navigation.navigate('Delivery', { tab: 'history' })} 
                     className="flex-1 bg-white border border-gray-200 py-3 rounded-xl ml-2 items-center"
                   >
-                     <Text className="text-gray-700 text-xs font-black">View History</Text>
+                     <Text className="text-gray-700 text-xs font-black">Delivery History</Text>
                   </TouchableOpacity>
               </View>
            </View>

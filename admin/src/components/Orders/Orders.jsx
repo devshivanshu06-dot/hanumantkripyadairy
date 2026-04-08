@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../../api/apiService';
-import { Search, CheckCircle, Truck, XCircle, MapPin, PackageCheck, AlertCircle, X, ExternalLink } from 'lucide-react';
+import { Search, CheckCircle, Truck, XCircle, MapPin, PackageCheck, AlertCircle, X, ExternalLink, Navigation } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -190,24 +190,15 @@ const Orders = () => {
                   #{order._id.slice(-6).toUpperCase()}
                 </td>
                 <td>
-                  <div className="font-bold text-gray-900">{order.user?.name || 'Unknown User'}</div>
-                  <div className="text-xs text-blue-600 mb-1 font-semibold">{order.user?.phone || 'No Phone'}</div>
-                  <div className="flex items-start gap-1 text-xs text-gray-600 max-w-xs leading-snug">
-                    <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-red-500" />
-                    <span className="flex-1">{order.deliveryAddress || 'No Address Provided'}</span>
-                    {order.deliveryCoordinates && order.deliveryCoordinates.latitude && (
-                        <button 
-                            onClick={() => {
-                                setSelectedOrderCoords(order.deliveryCoordinates);
-                                setSelectedOrderAddress(order.deliveryAddress);
-                                setShowMapModal(true);
-                            }}
-                            className="ml-1 text-blue-500 hover:text-blue-700"
-                            title="View on Map"
-                        >
-                            <ExternalLink size={12} />
-                        </button>
-                    )}
+                  <div className="font-bold text-gray-900 text-sm">{order.user?.name || 'Unknown User'}</div>
+                  <a href={`tel:${order.user?.phone}`} className="text-xs text-blue-600 mb-2 font-bold hover:underline block">
+                    {order.user?.phone || 'No Phone'}
+                  </a>
+                  <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 max-w-xs shadow-inner">
+                    <div className="flex items-start gap-2">
+                       <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-500" />
+                       <span className="text-xs font-bold text-gray-700 leading-relaxed">{order.deliveryAddress || 'No Address Provided'}</span>
+                    </div>
                   </div>
                 </td>
                 <td>
@@ -221,7 +212,7 @@ const Orders = () => {
                 <td>
                   <div className="font-black text-gray-900 text-base">₹{order.totalAmount}</div>
                   <div className="text-[10px] font-bold text-green-700 mt-1 uppercase tracking-wider bg-green-50 self-start px-2 py-0.5 rounded-md text-center max-w-[60px]">
-                    {order.paymentType || 'COD'}
+                    {order.paymentType || 'Wallet'}
                   </div>
                 </td>
                 <td>
@@ -248,6 +239,28 @@ const Orders = () => {
                       >
                         <XCircle size={14} /> Cancel
                       </button>
+                    )}
+                    {order.deliveryCoordinates?.latitude && (
+                      <div className="flex flex-col gap-2 pt-2 border-t border-gray-100">
+                        <button 
+                          onClick={() => {
+                              setSelectedOrderCoords(order.deliveryCoordinates);
+                              setSelectedOrderAddress(order.deliveryAddress);
+                              setShowMapModal(true);
+                          }}
+                          className="p-2 bg-gray-100 text-gray-700 rounded-lg shadow-sm font-bold text-xs flex items-center justify-center gap-1 w-full hover:bg-gray-200 transition"
+                          title="View on Map"
+                        >
+                          <ExternalLink size={14} /> View Map
+                        </button>
+                        <button 
+                          onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryCoordinates.latitude},${order.deliveryCoordinates.longitude}`, '_blank')}
+                          className="p-2 bg-blue-900 text-white rounded-lg shadow-sm font-bold text-xs flex items-center justify-center gap-1 w-full hover:bg-black transition"
+                          title="Open Google Maps Navigation"
+                        >
+                          <Navigation size={14} /> Navigate
+                        </button>
+                      </div>
                     )}
                   </div>
                 </td>

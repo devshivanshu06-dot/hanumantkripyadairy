@@ -5,11 +5,12 @@ const Ledger = require('../models/Ledger');
 const Livestream = require('../models/Livestream');
 const Order = require('../models/Order');
 const Transaction = require('../models/Transaction');
+const Subscription = require('../models/Subscription');
 
 exports.getCustomers = async (req, res) => {
   try {
     const customers = await User.find({ role: 'customer' })
-      .select('name phone role is_active createdAt')
+      .select('name phone role is_active walletBalance createdAt')
       .sort({ createdAt: -1 });
 
     res.json(customers);
@@ -189,42 +190,33 @@ exports.addLedgerEntry = async (req, res) => {
 };
 
 
-// Get all ledger entries for table view
+// Get all delivered orders for the ledger view
 exports.getLedger = async (req, res) => {
   try {
     const { from_date, to_date, user_id } = req.query;
 
-    let ledgerQuery = {};
-    let orderQuery = {};
+    let orderQuery = { status: 'Delivered' };
     
     // Date range filter
     if (from_date || to_date) {
-      ledgerQuery.date = {};
       orderQuery.createdAt = {};
       if (from_date) {
-        ledgerQuery.date.$gte = new Date(from_date);
         orderQuery.createdAt.$gte = new Date(from_date);
       }
       if (to_date) {
-        ledgerQuery.date.$lte = new Date(to_date);
         orderQuery.createdAt.$lte = new Date(to_date);
       }
     }
     
     // User filter
     if (user_id) {
-      ledgerQuery.user_id = user_id;
       orderQuery.user = user_id;
     }
 
-    // Status filter for orders
-    orderQuery.status = 'Delivered';
-
-    // Fetch both manual ledger entries AND delivered orders
-    const [ledgerEntries, deliveredOrders] = await Promise.all([
-      Ledger.find(ledgerQuery).populate('user_id', 'name phone').sort({ date: -1 }),
-      Order.find(orderQuery).populate('user', 'name phone').populate('items.product', 'name').sort({ createdAt: -1 })
-    ]);
+    const deliveredOrders = await Order.find(orderQuery)
+      .populate('user', 'name phone')
+      .populate('items.product', 'name unit')
+      .sort({ createdAt: -1 });
 
     // Format orders as ledger entries
     const orderEntries = deliveredOrders.map(order => ({
@@ -232,20 +224,42 @@ exports.getLedger = async (req, res) => {
       user_id: order.user,
       date: order.createdAt,
       createdAt: order.createdAt,
-      litres_delivered: order.items.reduce((sum, item) => sum + (item.quantity || 0), 0),
-      balance: order.totalAmount,
-      bottle_returned: true, // Assuming delivery implies bottle returned or managed
+      items: order.items,
+      totalAmount: order.totalAmount,
       isOrder: true,
-      label: order.items.map(i => i.product?.name).join(', ')
+      label: order.items.map(i => `${i.product?.name || 'Item'} (${i.quantity} ${i.product?.unit || ''})`).join(', ')
     }));
 
-    // Combine and sort
-    const combined = [...ledgerEntries, ...orderEntries]
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    res.json(combined);
+    res.json(orderEntries);
   } catch (error) {
     console.error('Get ledger error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+exports.getCustomerDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customer = await User.findById(id).select('-otp -otp_expires_at');
+    
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    const [orders, transactions, subscriptions] = await Promise.all([
+      Order.find({ user: id }).populate('items.product').sort({ createdAt: -1 }),
+      Transaction.find({ userId: id }).sort({ createdAt: -1 }),
+      Subscription.find({ user: id }).populate('product').sort({ createdAt: -1 })
+    ]);
+
+    res.json({
+      customer,
+      orders,
+      transactions,
+      subscriptions
+    });
+  } catch (error) {
+    console.error('Get customer details error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

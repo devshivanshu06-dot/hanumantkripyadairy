@@ -83,6 +83,25 @@ const MyOrdersScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleSkip = (id) => {
+    Alert.alert('Skip Tomorrow', 'Are you sure you want to skip tomorrow\'s delivery?', [
+      { text: 'Yes, Skip', onPress: () => skipTomorrow(id) },
+      { text: 'Cancel', style: 'cancel' }
+    ]);
+  };
+
+  const skipTomorrow = async (id) => {
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      await subscriptionAPI.skipDate(id, tomorrow.toISOString());
+      fetchData();
+      Alert.alert('Skipped', 'Tomorrow\'s delivery has been skipped.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to skip delivery');
+    }
+  };
+
   const handleCancel = (id) => {
     Alert.alert(
       'Cancel Subscription',
@@ -133,7 +152,7 @@ const MyOrdersScreen = ({ navigation, route }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
             <Icon name="arrow-back-ios" size={20} color="#1e3a8a" />
           </TouchableOpacity>
-          <Text className="text-xl font-black text-blue-900 ml-2">Subscription</Text>
+          <Text className="text-xl font-black text-blue-900 ml-2">Delivery History</Text>
         </View>
         <TouchableOpacity 
           className="bg-blue-50 px-4 py-2 rounded-full border border-blue-100"
@@ -149,7 +168,7 @@ const MyOrdersScreen = ({ navigation, route }) => {
           onPress={() => setActiveTab('active')}
           className={`flex-1 py-3 rounded-2xl items-center ${activeTab === 'active' ? 'bg-blue-900 shadow-md' : 'bg-transparent'}`}
         >
-          <Text className={`font-black uppercase tracking-widest text-[10px] ${activeTab === 'active' ? 'text-white' : 'text-gray-400'}`}>My Subscriptions</Text>
+          <Text className={`font-black uppercase tracking-widest text-[10px] ${activeTab === 'active' ? 'text-white' : 'text-gray-400'}`}>Active Deliveries</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           onPress={() => setActiveTab('history')}
@@ -216,6 +235,12 @@ const MyOrdersScreen = ({ navigation, route }) => {
                             <Text className="text-white text-[10px] font-black uppercase tracking-widest">Resume</Text>
                           </TouchableOpacity>
                         )}
+                        <TouchableOpacity 
+                          onPress={() => handleSkip(sub._id)}
+                          className="flex-1 bg-blue-50 border border-blue-100 py-4 rounded-2xl items-center"
+                        >
+                          <Text className="text-blue-900 text-[10px] font-black uppercase tracking-widest">Skip Tomorrow</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity 
                           onPress={() => handleCancel(sub._id)}
                           className="flex-1 bg-white border border-gray-100 py-4 rounded-2xl items-center"

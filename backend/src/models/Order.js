@@ -34,7 +34,7 @@ const orderSchema = new mongoose.Schema({
   },
   paymentType: {
     type: String,
-    default: 'COD'
+    default: 'Wallet'
   },
   deliveryAddress: {
     type: String,

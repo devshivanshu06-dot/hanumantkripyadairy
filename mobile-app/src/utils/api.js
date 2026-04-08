@@ -1,8 +1,10 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '@env';
 
 // Change the production URL to your actual hosted backend domain
-const API_URL = 'http://192.168.0.6:4000/api';
+// const API_URL = 'https://hanumantkripyadairy-backend-mrcrafter32-mrcrafter32s-projects.vercel.app/api';
+
 
 const api = axios.create({
   baseURL: API_URL,
@@ -29,6 +31,10 @@ export const authAPI = {
   sendOTP: (phone) => api.post('/auth/send-otp', { phone }),
   verifyOTP: (phone, otp) => api.post('/auth/verify-otp', { phone, otp }),
   getProfile: () => api.get('/auth/profile'),
+  updateProfile: (token, data) => api.put('/auth/profile', data, {
+    headers: { Authorization: `Bearer ${token}` }
+  }),
+  updateFCMToken: (fcmToken) => api.post('/auth/fcm-token', { fcmToken }),
 };
 
 export const productAPI = {
@@ -70,6 +76,11 @@ export const customerAPI = {
 
 export const orderAPI = {
   getMyOrders: () => api.get('/orders/my-orders'),
+};
+
+export const notificationAPI = {
+  getNotifications: () => api.get('/notifications'),
+  markAsRead: () => api.post('/notifications/mark-read'),
 };
 
 export default api;

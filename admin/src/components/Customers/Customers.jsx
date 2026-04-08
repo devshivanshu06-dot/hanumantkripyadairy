@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../../api/apiService';
-import { Search, Edit2, Save, X, UserCheck, UserX } from 'lucide-react';
+import { Search, Edit2, Save, X, UserCheck, UserX, Eye } from 'lucide-react';
+import CustomerDetails from './CustomerDetails';
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
@@ -9,6 +10,7 @@ const Customers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', is_active: true });
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
 
   useEffect(() => {
     fetchCustomers();
@@ -36,7 +38,7 @@ const Customers = () => {
   };
 
   const handleEdit = (customer) => {
-    setEditingId(customer.id);
+    setEditingId(customer._id);
     setEditForm({
       name: customer.name,
       is_active: customer.is_active,
@@ -61,7 +63,7 @@ const Customers = () => {
 
   const toggleStatus = async (customer) => {
     try {
-      await adminAPI.updateCustomer(customer.id, {
+      await adminAPI.updateCustomer(customer._id, {
         name: customer.name,
         is_active: !customer.is_active,
       });
@@ -78,6 +80,10 @@ const Customers = () => {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
+
+  if (selectedCustomerId) {
+    return <CustomerDetails customerId={selectedCustomerId} onBack={() => setSelectedCustomerId(null)} />;
   }
 
   return (
@@ -110,6 +116,7 @@ const Customers = () => {
                 <th className="text-left py-4 px-6 text-gray-600 font-semibold">ID</th>
                 <th className="text-left py-4 px-6 text-gray-600 font-semibold">Name</th>
                 <th className="text-left py-4 px-6 text-gray-600 font-semibold">Phone</th>
+                <th className="text-left py-4 px-6 text-gray-600 font-semibold">Wallet Balance</th>
                 <th className="text-left py-4 px-6 text-gray-600 font-semibold">Status</th>
                 <th className="text-left py-4 px-6 text-gray-600 font-semibold">Actions</th>
               </tr>
@@ -117,10 +124,10 @@ const Customers = () => {
             <tbody>
               {filteredCustomers.length > 0 ? (
                 filteredCustomers.map((customer) => (
-                  <tr key={customer.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-6 text-gray-700">{customer.id}</td>
+                  <tr key={customer._id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-4 px-6 text-gray-700 text-xs font-mono">{customer._id?.slice(-6).toUpperCase()}</td>
                     <td className="py-4 px-6">
-                      {editingId === customer.id ? (
+                      {editingId === customer._id ? (
                         <input
                           type="text"
                           value={editForm.name}
@@ -134,8 +141,9 @@ const Customers = () => {
                       )}
                     </td>
                     <td className="py-4 px-6 text-gray-700">{customer.phone}</td>
+                    <td className="py-4 px-6 text-gray-700 font-black text-blue-900">₹{customer.walletBalance?.toFixed(2) || '0.00'}</td>
                     <td className="py-4 px-6">
-                      {editingId === customer.id ? (
+                      {editingId === customer._id ? (
                         <select
                           value={editForm.is_active}
                           onChange={(e) =>
@@ -160,10 +168,10 @@ const Customers = () => {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
-                        {editingId === customer.id ? (
+                        {editingId === customer._id ? (
                           <>
                             <button
-                              onClick={() => handleSave(customer.id)}
+                              onClick={() => handleSave(customer._id)}
                               className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
                               title="Save"
                             >
@@ -185,6 +193,13 @@ const Customers = () => {
                               title="Edit"
                             >
                               <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setSelectedCustomerId(customer._id)}
+                              className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => toggleStatus(customer)}
