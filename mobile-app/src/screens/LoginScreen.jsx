@@ -12,12 +12,11 @@ import {
   Alert,
 } from 'react-native';
 import { authAPI } from '../utils/api';
+import Loader from '../components/Loader';
 
 const LoginScreen = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
-
-  console.log(phoneNumber,'phoneNumber')
 
   const handleLogin = async () => {
     if (!phoneNumber || phoneNumber.length !== 10) {
@@ -50,7 +49,7 @@ const LoginScreen = ({ navigation }) => {
               source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2917/2917633.png' }}
               style={styles.logo}
             />
-            <Text style={styles.appName}>Hanumant Dairy</Text>
+            <Text style={styles.appName}>Hanumant Diary</Text>
             <Text style={styles.tagline}>Fresh Milk at Your Doorstep</Text>
           </View>
 
@@ -93,6 +92,7 @@ const LoginScreen = ({ navigation }) => {
           </View>
         </View>
       </KeyboardAvoidingView>
+      {loading && <Loader message="Sending OTP..." />}
     </SafeAreaView>
   );
 };
@@ -177,18 +177,18 @@ const styles = StyleSheet.create({
     color: '#212529',
   },
   button: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#1e3a8a',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#FF6B6B',
+    shadowColor: '#1e3a8a',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   buttonDisabled: {
-    backgroundColor: '#ffb3b3',
+    backgroundColor: '#9ca3af',
   },
   buttonText: {
     color: 'white',
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   link: {
-    color: '#FF6B6B',
+    color: '#1e3a8a',
     fontWeight: '600',
   },
 });

@@ -5,6 +5,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
+// Import Global Components
+import Loader from './src/components/Loader';
+
 // Import Screens
 import LoginScreen from './src/screens/LoginScreen';
 import OTPScreen from './src/screens/OTPScreen';
@@ -92,7 +95,7 @@ const TabNavigator = () => {
 const MainStack = () => {
   const { user, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <Loader message="Setting up your experience..." />;
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>

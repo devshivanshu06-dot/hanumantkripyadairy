@@ -17,6 +17,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { productAPI, subscriptionAPI, bannerAPI, customerAPI, walletAPI, orderAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import Loader from '../components/Loader';
 
 const { width } = Dimensions.get('window');
 
@@ -110,11 +111,7 @@ const HomeScreen = ({ navigation }) => {
   }
 
   if (loading && !refreshing) {
-    return (
-      <View className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color="#1e3a8a" />
-      </View>
-    );
+    return <Loader message="Fetching fresh milk..." />;
   }
 
   return (

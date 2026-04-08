@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { authAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import Loader from '../components/Loader';
 
 const OTPScreen = ({ navigation, route }) => {
   const { phoneNumber } = route.params;
@@ -137,6 +138,7 @@ const OTPScreen = ({ navigation, route }) => {
           </View>
         </View>
       </KeyboardAvoidingView>
+      {loading && <Loader message="Verifying..." />}
     </SafeAreaView>
   );
 };
@@ -191,22 +193,22 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
   },
   otpInputActive: {
-    borderColor: '#FF6B6B',
+    borderColor: '#1e3a8a',
     backgroundColor: '#fff',
   },
   button: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#1e3a8a',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#FF6B6B',
+    shadowColor: '#1e3a8a',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   buttonDisabled: {
-    backgroundColor: '#ffb3b3',
+    backgroundColor: '#9ca3af',
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -229,7 +231,7 @@ const styles = StyleSheet.create({
   },
   resendText: {
     fontSize: 15,
-    color: '#FF6B6B',
+    color: '#1e3a8a',
     fontWeight: '700',
   },
 });
