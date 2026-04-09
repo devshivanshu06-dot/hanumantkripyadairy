@@ -2,8 +2,6 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '@env';
 
-// Change the production URL to your actual hosted backend domain
-// const API_URL = 'https://hanumantkripyadairy-backend-mrcrafter32-mrcrafter32s-projects.vercel.app/api';
 
 
 const api = axios.create({
