@@ -46,11 +46,11 @@ const LoginScreen = ({ navigation }) => {
         <View style={styles.content}>
           <View style={styles.logoContainer}>
             <Image
-              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2917/2917633.png' }}
+              source={require('../assets/Logo1.jpeg')}
               style={styles.logo}
             />
-            <Text style={styles.appName}>Hanumant Diary</Text>
-            <Text style={styles.tagline}>Fresh Milk at Your Doorstep</Text>
+            <Text style={styles.appName}>Hanumant Kripa Dairy</Text>
+            <Text style={styles.tagline}>Pure Milk, Perfect Trust</Text>
           </View>
 
           <View style={styles.formContainer}>
@@ -84,9 +84,22 @@ const LoginScreen = ({ navigation }) => {
 
             <View style={styles.termsContainer}>
               <Text style={styles.termsText}>
+                Hanumant Kripa Dairy ensures 100% purity and transparent processing.
+              </Text>
+              <Text style={[styles.termsText, { marginTop: 8 }]}>
                 By continuing, you agree to our{' '}
-                <Text style={styles.link}>Terms of Service</Text> and{' '}
-                <Text style={styles.link}>Privacy Policy</Text>
+                <Text 
+                  style={styles.link} 
+                  onPress={() => navigation.navigate('PrivacyPolicy')}
+                >
+                  Privacy Policy
+                </Text> and{' '}
+                <Text 
+                  style={styles.link} 
+                  onPress={() => navigation.navigate('About')}
+                >
+                  About Us
+                </Text>
               </Text>
             </View>
           </View>

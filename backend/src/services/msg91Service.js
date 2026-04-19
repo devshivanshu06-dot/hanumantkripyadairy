@@ -19,6 +19,7 @@ const sendMSG91OTP = async (phone, otp) => {
         'Content-Type': 'application/json'
       }
     });
+    console.log(response.data, phone,otp,url)
     return response.data;
   } catch (error) {
     console.error('Error sending MSG91 OTP:', error.response?.data || error.message);

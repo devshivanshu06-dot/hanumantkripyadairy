@@ -85,6 +85,7 @@ exports.verifyOTP = async (req, res) => {
         name: user.name,
         phone: user.phone,
         role: user.role,
+        is_active: user.is_active,
       },
     });
   } catch (error) {
@@ -107,6 +108,7 @@ exports.getProfile = async (req, res) => {
       address: user.address,
       addresses: user.addresses,
       walletBalance: user.walletBalance,
+      is_active: user.is_active,
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -116,7 +118,7 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, initialLocation } = req.body;
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -124,7 +126,47 @@ exports.updateProfile = async (req, res) => {
     }
 
     if (name) user.name = name;
-    // You can add email to schema if needed, for now just name
+
+    // Handle automatic address pre-fill during signup
+    if (initialLocation && initialLocation.latitude && initialLocation.longitude && (!user.addresses || user.addresses.length === 0)) {
+       try {
+         const apiKey = process.env.GOOGLE_MAPS_API_KEY || "AIzaSyCLzTq1dVii7DrvKGQ8GLU55V73M_Sv7_A";
+         const geoResponse = await fetch(
+           `https://maps.googleapis.com/maps/api/geocode/json?latlng=${initialLocation.latitude},${initialLocation.longitude}&key=${apiKey}`
+         );
+         const geoData = await geoResponse.json();
+         
+         if (geoData.status === 'OK' && geoData.results.length > 0) {
+           const result = geoData.results[0];
+           const comps = result.address_components;
+           const getC = (t) => comps.find(c => c.types.includes(t))?.long_name || '';
+           
+           const street = result.formatted_address.split(',')[0];
+           const city = getC('locality') || getC('administrative_area_level_2');
+           const state = getC('administrative_area_level_1');
+           const pincode = getC('postal_code');
+           const neighborhood = getC('sublocality_level_1') || getC('sublocality');
+
+           const newAddr = {
+             label: 'Home',
+             addressLine1: street,
+             landmark: neighborhood,
+             city: city,
+             state: state,
+             pincode: pincode,
+             coordinates: initialLocation,
+             isDefault: true
+           };
+
+           user.addresses = [newAddr];
+           user.address = result.formatted_address; // Legacy string field
+         }
+       } catch (geoError) {
+         console.error('Initial geocoding error:', geoError);
+         // Don't fail signup just because geocoding failed
+       }
+    }
+
     await user.save();
 
     res.json({
@@ -134,6 +176,9 @@ exports.updateProfile = async (req, res) => {
         name: user.name,
         phone: user.phone,
         role: user.role,
+        is_active: user.is_active,
+        addresses: user.addresses,
+        address: user.address
       }
     });
   } catch (error) {

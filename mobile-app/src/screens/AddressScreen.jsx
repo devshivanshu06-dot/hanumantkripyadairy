@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../context/AuthContext';
 import { addressAPI } from '../utils/api';
 import { GOOGLE_MAPS_API_KEY } from '@env';
+import logger from '../utils/logger';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,6 +38,8 @@ const AddressScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
+  const [isOpeningMap, setIsOpeningMap] = useState(false);
+  const geocodeTimeout = useRef(null);
   
   // Fake map region for placeholder
   const [mapRegion, setMapRegion] = useState({
@@ -69,17 +72,15 @@ const AddressScreen = ({ navigation, route }) => {
       return true;
     }
     try {
-      const granted = await PermissionsAndroid.request(
+      const granted = await PermissionsAndroid.requestMultiple([
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Location Permission',
-          message: 'Hanumant Dairy needs access to your location to set delivery addresses.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        },
+        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+      ]);
+
+      return (
+        granted['android.permission.ACCESS_FINE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED ||
+        granted['android.permission.ACCESS_COARSE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED
       );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
     } catch (err) {
       console.warn(err);
       return false;
@@ -112,27 +113,49 @@ const AddressScreen = ({ navigation, route }) => {
 
   const fetchAddressFromCoordinates = async (lat, lng) => {
     try {
+      const apiKey = GOOGLE_MAPS_API_KEY || "AIzaSyCLzTq1dVii7DrvKGQ8GLU55V73M_Sv7_A";
+      logger.info('AddressScreen: fetchAddressFromCoordinates Start', { lat, lng });
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`
       );
       const data = await response.json();
-      if (data && data.status === 'OK' && data.results.length > 0) {
+      logger.info('AddressScreen: Geocode Response', { status: data?.status });
+        
+        if (data.status === 'REQUEST_DENIED') {
+          logger.error('AddressScreen: Geocode API KEY DENIED. Check if Geocoding API is enabled in Google Console.');
+        }
+
+        if (data && data.status === 'OK' && data.results?.length > 0) {
         const result = data.results[0];
         const addressComponents = result.address_components;
         
         const getComponent = (type) => 
           addressComponents.find(c => c.types.includes(type))?.long_name || '';
 
+        const neighborhood = getComponent('sublocality_level_1') || getComponent('sublocality');
+        const city = getComponent('locality') || getComponent('administrative_area_level_2');
+        const state = getComponent('administrative_area_level_1');
+        const pincode = getComponent('postal_code');
+        
+        // Use a cleaner version of the formatted address for Line 1
+        const parts = result.formatted_address.split(',');
+        // Usually the first 1-2 parts are the specific location
+        const line1 = parts.length > 3 
+          ? parts.slice(0, parts.length - 3).join(', ').trim() 
+          : parts[0];
+
         setFormData(prev => ({
           ...prev,
-          addressLine1: result.formatted_address.split(',').slice(0, 2).join(', ').trim(),
-          city: getComponent('locality') || getComponent('administrative_area_level_2'),
-          state: getComponent('administrative_area_level_1'),
-          pincode: getComponent('postal_code') || prev.pincode,
+          addressLine1: line1,
+          landmark: neighborhood || prev.landmark,
+          city: city,
+          state: state,
+          pincode: pincode,
         }));
+        setSearchQuery(result.formatted_address);
       }
     } catch (error) {
-      console.error('Reverse Geocoding Error:', error);
+      logger.error('AddressScreen: Reverse Geocoding Error', error);
     }
   };
 
@@ -184,9 +207,12 @@ const AddressScreen = ({ navigation, route }) => {
           longitudeDelta: 0.005
         });
         
+        const neighborhood = getComponent('sublocality_level_1') || getComponent('sublocality');
+
         setFormData(prev => ({
           ...prev,
           addressLine1: prediction.structured_formatting.main_text,
+          landmark: neighborhood || prev.landmark,
           city: getComponent('locality') || getComponent('administrative_area_level_2'),
           state: getComponent('administrative_area_level_1'),
           pincode: getComponent('postal_code') || prev.pincode
@@ -201,62 +227,170 @@ const AddressScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleGetCurrentLocation = async () => {
+  useEffect(() => {
+    logger.info('AddressScreen: Component Mounted (GPS Enabled)');
+    if (!existingAddress) {
+      handleGetCurrentLocation(true);
+    }
+  }, []);
+
+  const handleGetCurrentLocation = async (silent = false) => {
     try {
-      if (!Geolocation) {
-        Alert.alert("Error", "Geolocation module is not available.");
+      if (!Geolocation || typeof Geolocation.getCurrentPosition !== 'function') {
+        logger.error('AddressScreen: Geolocation library is NULL or invalid');
+        if (!silent) Alert.alert("Error", "GPS module is currently unavailable. Please try again or use the search bar.");
         return;
       }
 
       setFetchingLocation(true);
+
+      if (Platform.OS === 'android') {
+        Geolocation.setRNConfiguration({
+          skipPermissionRequests: true,
+          locationProvider: 'playServices',
+        });
+      }
       
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) {
         setFetchingLocation(false);
-        Alert.alert("Permission Error", "Location permission denied. Please enable it in settings.");
+        if (!silent) Alert.alert("Permission Error", "Location permission denied. Please enable it in settings.");
         return;
       }
 
-      Geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            console.log('Location success:', position.coords);
-            const { latitude, longitude } = position.coords;
-            setCoordinates({ latitude, longitude });
-            setMapRegion(prev => ({ ...prev, latitude, longitude }));
-            
-            // Set placeholder to allow saving immediately
-            if (!formData.addressLine1) {
-              setFormData(prev => ({
-                ...prev,
-                addressLine1: "Current Location",
-                city: "GPS Captured",
-                pincode: "000000"
-              }));
-            }
-            
-            // Re-fetch real address in the background
-            fetchAddressFromCoordinates(latitude, longitude);
-            setFetchingLocation(false);
+      const getPosition = (options) =>
+        new Promise((resolve, reject) => {
+          Geolocation.getCurrentPosition(resolve, reject, options);
+        });
 
-            // Give a hint to the user they can now just Save
-            Alert.alert("Success", "Location captured! You can now Confirm & Save.");
-          } catch (e) {
-            console.error('Success callback error:', e);
-            setFetchingLocation(false);
+      const applyPosition = (position) => {
+        logger.info('AddressScreen: GPS Success', { lat: position.coords.latitude, lng: position.coords.longitude });
+        const { latitude, longitude } = position.coords;
+        setCoordinates({ latitude, longitude });
+        setMapRegion(prev => ({ ...prev, latitude, longitude }));
+
+        setFormData(prev => ({
+          ...prev,
+          addressLine1: '',
+          city: '',
+          pincode: ''
+        }));
+
+        fetchAddressFromCoordinates(latitude, longitude);
+        setFetchingLocation(false);
+
+        if (!silent) {
+          Alert.alert('Success', 'Location captured! You can now Confirm & Save.');
+        }
+      };
+
+      try {
+        const position = await getPosition({
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 10000,
+        });
+        applyPosition(position);
+      } catch (primaryError) {
+        const shouldFallbackToNetwork =
+          Platform.OS === 'android' &&
+          (primaryError?.code === 2 || primaryError?.code === 3);
+
+        if (!shouldFallbackToNetwork) {
+          logger.warn('AddressScreen: GPS Error Callback', primaryError);
+          setFetchingLocation(false);
+          if (!silent) {
+            Alert.alert('Location Error', primaryError?.message || 'Failed to get location.');
           }
+          return;
+        }
+
+        try {
+          if (Platform.OS === 'android') {
+            Geolocation.setRNConfiguration({
+              skipPermissionRequests: true,
+              locationProvider: 'android',
+            });
+          }
+
+          const fallbackPosition = await getPosition({
+            enableHighAccuracy: false,
+            timeout: 20000,
+            maximumAge: 30000,
+          });
+          applyPosition(fallbackPosition);
+        } catch (fallbackError) {
+          logger.warn('AddressScreen: Android fallback GPS Error', fallbackError);
+          setFetchingLocation(false);
+          if (!silent) {
+            Alert.alert('Location Error', fallbackError?.message || 'Failed to get location.');
+          }
+        }
+      }
+    } catch (err) {
+      logger.error('AddressScreen: handleGetCurrentLocation Crash', err);
+      setFetchingLocation(false);
+      if (!silent) {
+        Alert.alert("Error", "Something went wrong while detecting location.");
+      }
+    }
+  };
+
+  const handleOpenMap = async () => {
+    setIsOpeningMap(true);
+    try {
+      if (!Geolocation || typeof Geolocation.getCurrentPosition !== 'function') {
+        logger.error('AddressScreen: handleOpenMap Geolocation library is NULL');
+        setShowMapModal(true);
+        setIsOpeningMap(false);
+        return;
+      }
+      
+      logger.info('AddressScreen: handleOpenMap Start');
+      // Use existing coords if we have them
+      if (coordinates.latitude) {
+        setMapRegion({
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005
+        });
+        setShowMapModal(true);
+        setIsOpeningMap(false);
+        return;
+      }
+
+      // Quick GPS capture for map
+      Geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          logger.info('AddressScreen: Map GPS Success', { latitude, longitude });
+          
+          const newRegion = {
+            latitude,
+            longitude,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005
+          };
+          
+          setCoordinates({ latitude, longitude });
+          setMapRegion(newRegion);
+          setShowMapModal(true);
+          setIsOpeningMap(false);
+          
+          // Reverse geocode this new spot too
+          fetchAddressFromCoordinates(latitude, longitude);
         },
         (error) => {
-          console.log('Location fetch error:', error);
-          setFetchingLocation(false);
-          Alert.alert("Location Error", error?.message || "Failed to get location.");
+          logger.warn('AddressScreen: Map GPS failed, opening at last known or default', error);
+          setShowMapModal(true);
+          setIsOpeningMap(false);
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
       );
     } catch (err) {
-      console.error('HandleGetCurrentLocation crash:', err);
-      setFetchingLocation(false);
-      Alert.alert("Error", "Something went wrong while detecting location.");
+      setShowMapModal(true);
+      setIsOpeningMap(false);
     }
   };
 
@@ -386,13 +520,20 @@ const AddressScreen = ({ navigation, route }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  onPress={() => setShowMapModal(true)}
+                  onPress={handleOpenMap}
+                  disabled={isOpeningMap}
                   className="flex-1 flex-row items-center justify-center py-4 bg-gray-50 rounded-2xl border border-gray-200"
                 >
-                  <Icon name="map" size={20} color="#475569" />
-                  <Text className="ml-2 font-black text-slate-600 text-xs tracking-tight">
-                    Select on Map
-                  </Text>
+                  {isOpeningMap ? (
+                    <ActivityIndicator color="#475569" size="small" />
+                  ) : (
+                    <>
+                      <Icon name="map" size={20} color="#475569" />
+                      <Text className="ml-2 font-black text-slate-600 text-xs tracking-tight">
+                        Select on Map
+                      </Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
 
@@ -434,6 +575,17 @@ const AddressScreen = ({ navigation, route }) => {
                         />
                     </View>
                     
+                    <View>
+                        <Text className="text-[10px] font-black text-gray-400 mb-2 ml-1 uppercase tracking-widest">Nearby Landmark</Text>
+                        <TextInput 
+                            placeholder="e.g. Near Apollo Hospital"
+                            value={formData.landmark}
+                            onChangeText={t => setFormData({...formData, landmark: t})}
+                            className="bg-gray-50 px-5 py-4 rounded-2xl border border-gray-100 text-base font-bold text-blue-950"
+                            placeholderTextColor="#94a3b8"
+                        />
+                    </View>
+
                     <View>
                         <Text className="text-[10px] font-black text-gray-400 mb-2 ml-1 uppercase tracking-widest">Floor / Tower</Text>
                         <TextInput 
@@ -500,14 +652,19 @@ const AddressScreen = ({ navigation, route }) => {
               <MapView
                 style={{ flex: 1 }}
                 provider={PROVIDER_GOOGLE}
-                initialRegion={{
+                region={{
                   ...mapRegion,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
+                  latitudeDelta: mapRegion.latitudeDelta || 0.01,
+                  longitudeDelta: mapRegion.longitudeDelta || 0.01,
                 }}
                 onRegionChangeComplete={(region) => {
                   setMapRegion(region);
-                  fetchAddressFromCoordinates(region.latitude, region.longitude);
+                  
+                  // Debounce the geocode call so we don't spam Google while moving
+                  if (geocodeTimeout.current) clearTimeout(geocodeTimeout.current);
+                  geocodeTimeout.current = setTimeout(() => {
+                    fetchAddressFromCoordinates(region.latitude, region.longitude);
+                  }, 800);
                 }}
               />
             ) : (

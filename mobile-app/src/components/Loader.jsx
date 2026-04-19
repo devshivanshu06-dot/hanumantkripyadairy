@@ -23,9 +23,9 @@ const Loader = ({ message = "Loading..." }) => {
   }, []);
 
   return (
-    <View style={StyleSheet.absoluteFill} className="items-center justify-center">
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.7)' }]} className="items-center justify-center">
       <LinearGradient
-        colors={['#1e3a8a', '#1e40af']}
+        colors={['rgba(30, 58, 138, 0.4)', 'rgba(15, 23, 42, 0.8)']}
         className="absolute inset-0"
       />
       

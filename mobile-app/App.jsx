@@ -25,11 +25,12 @@ import SignupScreen from './src/screens/SignupScreen';
 import SupportScreen from './src/screens/SupportScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import AboutScreen from './src/screens/AboutScreen';
+import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
+import DeactivatedScreen from './src/screens/DeactivatedScreen';
+import logger from './src/utils/logger';
 
 // Import Contexts
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-import { requestUserPermission, getFCMToken, notificationListener } from './src/services/notificationService';
-import { useNavigation } from '@react-navigation/native';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -53,7 +54,7 @@ const TabNavigator = () => {
               name={iconName} 
               size={size} 
               color={focused ? '#1e3a8a' : '#9ca3af'} 
-            />
+              />
           );
         },
         tabBarActiveTintColor: '#1e3a8a',
@@ -105,6 +106,8 @@ const MainStack = () => {
           <Stack.Screen name="OTP" component={OTPScreen} />
           <Stack.Screen name="Signup" component={SignupScreen} />
         </>
+      ) : user.is_active === false ? (
+        <Stack.Screen name="Deactivated" component={DeactivatedScreen} />
       ) : (
         <>
           <Stack.Screen name="MainTabs" component={TabNavigator} />
@@ -115,44 +118,41 @@ const MainStack = () => {
           <Stack.Screen name="SubscriptionConfirm" component={SubscriptionConfirmScreen} />
           <Stack.Screen name="Support" component={SupportScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
-          <Stack.Screen name="About" component={AboutScreen} />
         </>
       )}
+      {/* Shared Screens */}
+      <Stack.Screen name="About" component={AboutScreen} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
     </Stack.Navigator>
   );
 };
 
-const NotificationHandler = ({ children }) => {
-  const { user } = useAuth();
-  const navigation = useNavigation();
-
-  React.useEffect(() => {
-    const setupNotifications = async () => {
-      const hasPermission = await requestUserPermission();
-      if (hasPermission && user) {
-        await getFCMToken();
-      }
-    };
-
-    setupNotifications();
-
-    if (user) {
-      const unsubscribe = notificationListener(navigation);
-      return unsubscribe;
-    }
-  }, [user, navigation]);
-
-  return children;
-};
-
 const App = () => {
+  React.useEffect(() => {
+    // Set up global error handler for logging crashes
+    const defaultHandler = (global.ErrorUtils?.getGlobalHandler && global.ErrorUtils.getGlobalHandler()) || console.error;
+    
+    global.ErrorUtils?.setGlobalHandler?.((error, isFatal) => {
+      logger.error(`GLOBAL_CRASH (${isFatal ? 'FATAL' : 'NON-FATAL'})`, {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      // Still call default to allow react-native standard crash behavior
+      if (defaultHandler) {
+        defaultHandler(error, isFatal);
+      }
+    });
+
+    logger.info('App: Session Started');
+  }, []);
+
   return (
     <SafeAreaProvider>
       <AuthProvider>
         <NavigationContainer>
-          <NotificationHandler>
-            <MainStack />
-          </NotificationHandler>
+          <MainStack />
         </NavigationContainer>
       </AuthProvider>
     </SafeAreaProvider>

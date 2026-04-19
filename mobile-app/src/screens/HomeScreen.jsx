@@ -15,9 +15,13 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import YoutubePlayer from 'react-native-youtube-iframe';
+import Geolocation from '@react-native-community/geolocation';
+import { PermissionsAndroid, Platform, Alert } from 'react-native';
+import { GOOGLE_MAPS_API_KEY } from '@env';
 import { productAPI, subscriptionAPI, bannerAPI, customerAPI, walletAPI, orderAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import Loader from '../components/Loader';
+import logger from '../utils/logger';
 
 const { width } = Dimensions.get('window');
 
@@ -32,33 +36,196 @@ const HomeScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuth();
-
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [locationError, setLocationError] = useState(null);
   useEffect(() => {
-    fetchHomeData();
+    const fetchAllData = () => {
+      try {
+        logger.info('HomeScreen: Triggering fetchAllData');
+        fetchHomeData();
+        handleGetCurrentLocation();
+      } catch (err) {
+        logger.error('HomeScreen: Initial fetch failed', err);
+      }
+    };
+
+    // Use requestIdleCallback to avoid blocking transitions, fallback to setTimeout
+    const task = (global.requestIdleCallback || ((fn) => setTimeout(fn, 150)))(fetchAllData);
+    
+    return () => {
+      if (global.cancelIdleCallback && task) {
+        global.cancelIdleCallback(task);
+      }
+    };
   }, []);
+
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'ios') {
+      const status = await Geolocation.requestAuthorization('whenInUse');
+      return status === 'granted';
+    }
+    try {
+      const granted = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+      ]);
+
+      return (
+        granted['android.permission.ACCESS_FINE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED ||
+        granted['android.permission.ACCESS_COARSE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED
+      );
+    } catch (err) {
+      console.warn(err);
+      return false;
+    }
+  };
+
+  const handleGetCurrentLocation = async () => {
+    try {
+      logger.info('HomeScreen: handleGetCurrentLocation Start');
+      const hasPermission = await requestLocationPermission();
+      logger.info('HomeScreen: Permission result', { hasPermission });
+      if (!hasPermission) {
+        setIsDetectingLocation(false);
+        return;
+      }
+
+      if (!Geolocation) {
+        logger.error('HomeScreen: Geolocation module not found');
+        setIsDetectingLocation(false);
+        return;
+      }
+
+      setIsDetectingLocation(true);
+      setLocationError(null);
+
+      if (Platform.OS === 'android') {
+        Geolocation.setRNConfiguration({
+          skipPermissionRequests: true,
+          locationProvider: 'playServices',
+        });
+      }
+
+      const getPosition = (options) =>
+        new Promise((resolve, reject) => {
+          Geolocation.getCurrentPosition(resolve, reject, options);
+        });
+
+      try {
+        const position = await getPosition({
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 10000,
+        });
+
+        const { latitude, longitude } = position.coords;
+        logger.info('HomeScreen: GPS Coords Found', { lat: latitude, lng: longitude });
+        fetchAddressFromCoords(latitude, longitude);
+      } catch (primaryError) {
+        const shouldFallbackToNetwork =
+          Platform.OS === 'android' &&
+          (primaryError?.code === 2 || primaryError?.code === 3);
+
+        if (!shouldFallbackToNetwork) {
+          logger.warn('HomeScreen: GPS Error Callback', primaryError);
+          setIsDetectingLocation(false);
+          setLocationError(primaryError?.message || 'GPS failed');
+          return;
+        }
+
+        try {
+          if (Platform.OS === 'android') {
+            Geolocation.setRNConfiguration({
+              skipPermissionRequests: true,
+              locationProvider: 'android',
+            });
+          }
+
+          const fallbackPosition = await getPosition({
+            enableHighAccuracy: false,
+            timeout: 20000,
+            maximumAge: 30000,
+          });
+
+          const { latitude, longitude } = fallbackPosition.coords;
+          logger.info('HomeScreen: Android fallback location found', { lat: latitude, lng: longitude });
+          fetchAddressFromCoords(latitude, longitude);
+        } catch (fallbackError) {
+          logger.warn('HomeScreen: Android fallback GPS Error', fallbackError);
+          setIsDetectingLocation(false);
+          setLocationError(fallbackError?.message || 'GPS failed');
+        }
+      }
+    } catch (err) {
+      logger.error('HomeScreen: Location detection crashed native-side', err);
+      setIsDetectingLocation(false);
+    }
+  };
+
+  const fetchAddressFromCoords = async (lat, lng) => {
+    try {
+      logger.info('HomeScreen: fetchAddressFromCoords Start', { lat, lng });
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY || ''}`
+      );
+      const data = await response.json();
+      logger.info('HomeScreen: Geocode response status', { status: data.status });
+      if (data && data.status === 'OK' && data.results?.length > 0) {
+        const result = data.results[0];
+        const city = result.address_components?.find(c => c.types.includes('locality'))?.long_name;
+        const subLocality = result.address_components?.find(c => c.types.includes('sublocality'))?.long_name;
+        
+        logger.info('HomeScreen: Address Resolved', { city, subLocality });
+        setCurrentLocation({
+          label: subLocality || 'Current Location',
+          address: result.formatted_address,
+          city: city
+        });
+      }
+    } catch (error) {
+      logger.error('HomeScreen: Reverse Geocode failed', error);
+    } finally {
+      setIsDetectingLocation(false);
+    }
+  };
 
   const fetchHomeData = async () => {
     try {
-      const [productsRes, subsRes, bannersRes, livestreamsRes, walletRes, ordersRes] = await Promise.all([
+      logger.info('HomeScreen: fetchHomeData Phase 1 Start');
+      // Phase 1: Critical UI Data (Banners & Products)
+      const [productsRes, bannersRes] = await Promise.all([
         productAPI.getProducts(),
-        subscriptionAPI.getMySubscriptions(),
-        bannerAPI.getActiveBanners(),
-        customerAPI.getLivestreams(),
-        walletAPI.getBalance().catch(() => ({ data: { balance: 0 } })),
-        orderAPI.getMyOrders().catch(() => ({ data: [] }))
+        bannerAPI.getActiveBanners()
       ]);
+      
       setProducts(productsRes.data);
-      setSubscriptions(subsRes.data);
-      setOrders(ordersRes.data || []);
-      if (bannersRes.data) {
-        setBanners(bannersRes.data);
-      }
-      if (livestreamsRes.data) {
-        setLivestreams(livestreamsRes.data);
-      }
-      setWalletBalance(walletRes.data.balance);
+      if (bannersRes.data) setBanners(bannersRes.data);
+      logger.info('HomeScreen: Phase 1 Finished');
+      
+      // Phase 2: Secondary Data (Deferred to keep the main thread responsive)
+      (global.requestIdleCallback || ((fn) => setTimeout(fn, 300)))(async () => {
+        try {
+          logger.info('HomeScreen: Phase 2 Start');
+          const [subsRes, livestreamsRes, walletRes, ordersRes] = await Promise.all([
+            subscriptionAPI.getMySubscriptions(),
+            customerAPI.getLivestreams(),
+            walletAPI.getBalance().catch(() => ({ data: { balance: 0 } })),
+            orderAPI.getMyOrders().catch(() => ({ data: [] }))
+          ]);
+
+          setSubscriptions(subsRes.data);
+          setOrders(ordersRes.data || []);
+          if (livestreamsRes.data) setLivestreams(livestreamsRes.data);
+          setWalletBalance(walletRes.data.balance);
+          logger.info('HomeScreen: Phase 2 Finished');
+        } catch (err) {
+          logger.error('HomeScreen: Secondary data fetch failed', err);
+        }
+      });
+
     } catch (error) {
-      console.error('Failed to fetch home data', error);
+      logger.error('HomeScreen: Critical home data failed', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -105,9 +272,11 @@ const HomeScreen = ({ navigation }) => {
   );
 
   let displayAddress = user?.address || 'Set your address';
-  if (user?.addresses && user.addresses.length > 0) {
+  if (user?.addresses?.length > 0) {
     const defAddr = user.addresses.find(a => a.isDefault) || user.addresses[0];
-    displayAddress = `${defAddr.label ? `[${defAddr.label}] ` : ''}${defAddr.addressLine1}, ${defAddr.city || ''}`.trim();
+    if (defAddr) {
+      displayAddress = `${defAddr.label ? `[${defAddr.label}] ` : ''}${defAddr.addressLine1 || ''}, ${defAddr.city || ''}`.trim();
+    }
   }
 
   if (loading && !refreshing) {
@@ -118,26 +287,69 @@ const HomeScreen = ({ navigation }) => {
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar backgroundColor="white" barStyle="dark-content" />
       
-      {/* Header */}
-      <View className="flex-row justify-between items-center px-6 py-3 bg-white border-b border-gray-50">
-        <View className="flex-row items-center">
-          <View className="w-12 h-12 bg-blue-50 rounded-full items-center justify-center overflow-hidden border border-blue-100">
-             <Image 
-               source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3039/3039396.png' }} 
-               className="w-10 h-10" 
-               resizeMode="contain"
-             />
-          </View>
-          <Text className="text-xl font-black text-blue-900 ml-3 tracking-tight">
-            Hanumant Kripa Dairy
-          </Text>
-        </View>
+      {/* Header with Location - Zomato Style */}
+      <View className="flex-row justify-between items-center px-5 py-3 bg-white">
         <TouchableOpacity 
-          className="p-2 bg-gray-50 rounded-full border border-gray-100"
-          onPress={() => navigation.navigate('Notifications')}
+          className="flex-row items-center flex-1 mr-4"
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('Addresses')}
         >
-          <Icon name="notifications" size={24} color="#1e3a8a" />
-          <View className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+          <View className="w-10 h-10 bg-red-500 rounded-full items-center justify-center mr-3 shadow-lg shadow-red-200">
+            <Icon name="location-on" size={22} color="white" />
+          </View>
+          <View className="flex-1">
+            <View className="flex-row items-center">
+              <Text className="text-base font-black text-gray-900 leading-tight" numberOfLines={1}>
+                {(() => {
+                  if (isDetectingLocation) return "Detecting Location...";
+                  const defaultAddr = user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0];
+                  if (defaultAddr?.label) return defaultAddr.label;
+                  if (currentLocation?.label) return currentLocation.label;
+                  return "Set Location";
+                })()}
+              </Text>
+              <Icon name="keyboard-arrow-down" size={20} color="#1e3a8a" />
+              {currentLocation && !isDetectingLocation && (
+                 <View className="ml-2 bg-blue-100 px-2 py-0.5 rounded-full">
+                    <Text className="text-[8px] font-black text-blue-800 uppercase">GPS</Text>
+                 </View>
+              )}
+            </View>
+            <Text className="text-[11px] font-bold text-gray-500" numberOfLines={1}>
+              {(() => {
+                if (locationError) return `GPS Issue: Tap to fix`;
+                const defaultAddr = user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0];
+                if (defaultAddr?.addressLine1) {
+                  return `${defaultAddr.addressLine1}${defaultAddr.city ? `, ${defaultAddr.city}` : ''}`;
+                }
+                if (currentLocation?.address) return currentLocation.address;
+                return "Click to add delivery address";
+              })()}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          className="w-10 h-10 bg-gray-50 rounded-xl items-center justify-center border border-gray-100"
+          onPress={() => navigation.navigate('Notifications')}
+          activeOpacity={0.7}
+        >
+          <Icon name="notifications-none" size={24} color="#1e3a8a" />
+          <View className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Search Bar - Zomato Style */}
+      <View className="px-5 pb-4 bg-white">
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Products')}
+          activeOpacity={0.9}
+          className="flex-row items-center bg-gray-50 px-4 h-12 rounded-2xl border border-gray-100 shadow-sm shadow-gray-100"
+        >
+          <Icon name="search" size={22} color="#94a3b8" />
+          <Text className="ml-3 text-gray-400 font-bold text-sm">
+            Search for fresh milk, ghee, sweets...
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -147,8 +359,8 @@ const HomeScreen = ({ navigation }) => {
         contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* Welcome Section */}
-        <View className="px-6 pt-6 pb-2">
-           <Text className="text-2xl font-black text-blue-950">Welcome {user?.name?.split(' ')[0] || 'User'}!</Text>
+        <View className="px-6 pt-4 pb-2">
+           <Text className="text-xl font-black text-blue-950">Namaste, {user?.name?.split(' ')[0] || 'Dairy Lover'}! 🙏</Text>
         </View>
         <View className="mb-6">
           <ScrollView 
@@ -261,11 +473,15 @@ const HomeScreen = ({ navigation }) => {
                   const dayNum = targetDay.getDate();
                   const dateStr = targetDay.toISOString().split('T')[0];
                   
-                  // Check if there was a delivery on this date
-                  const deliveryOnThisDay = orders.find(o => 
-                    o.orderType === 'Subscription-Generated' && 
-                    new Date(o.createdAt).toISOString().split('T')[0] === dateStr
-                  );
+                  // Check if there was a delivery on this date (with date safety)
+                  const deliveryOnThisDay = orders?.find(o => {
+                    if (!o?.createdAt) return false;
+                    try {
+                      return new Date(o.createdAt).toISOString().split('T')[0] === dateStr;
+                    } catch (e) {
+                      return false;
+                    }
+                  });
                   
                   let bgClass = "bg-white";
                   let textClass = "text-gray-400";

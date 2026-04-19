@@ -14,6 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { authAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import Geolocation from 'react-native-geolocation-service';
+import { GOOGLE_MAPS_API_KEY } from '@env';
+import { PermissionsAndroid } from 'react-native';
 
 const SignupScreen = ({ navigation, route }) => {
   const { token, user: initialUser } = route.params;
@@ -29,9 +32,30 @@ const SignupScreen = ({ navigation, route }) => {
 
     setLoading(true);
     try {
-      // We use the token in headers, authAPI.updateProfile should handle it
-      // or we can pass it explicitly if our api service isn't set up for this yet
-      const response = await authAPI.updateProfile(token, { name: name.trim() });
+      let locationData = null;
+      
+      // Attempt to get quick location for prefilling
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          const position = await new Promise((resolve, reject) => {
+            Geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 });
+          }).catch(() => null);
+          
+          if (position) {
+            locationData = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude
+            };
+          }
+        }
+      }
+
+      const response = await authAPI.updateProfile(token, { 
+        name: name.trim(),
+        initialLocation: locationData
+      });
+
       if (response.data.success) {
         await login(token, response.data.user);
       }

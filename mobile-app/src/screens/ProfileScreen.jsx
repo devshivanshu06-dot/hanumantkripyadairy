@@ -134,6 +134,7 @@ const ProfileScreen = ({ navigation }) => {
              { id: '4', title: 'Notifications', subtitle: 'View recent updates', icon: 'notifications', color: '#1e3a8a', screen: 'Notifications' },
              { id: '5', title: 'Help & Support', subtitle: 'Get assistance', icon: 'headset-mic', color: '#1e3a8a', screen: 'Support' },
              { id: '6', title: 'About Us', subtitle: 'Our mission', icon: 'info', color: '#64748b', screen: 'About' },
+             { id: '8', title: 'Privacy Policy', subtitle: 'Your data security', icon: 'security', color: '#1e293b', screen: 'PrivacyPolicy' },
              { id: '7', title: 'Rate Us', subtitle: 'Share your feedback', icon: 'star', color: '#eab308', screen: 'Rate' },
            ].map((item) => (
              <TouchableOpacity

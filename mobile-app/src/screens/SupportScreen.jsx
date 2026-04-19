@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Linking, Share, Alert } from 'react-native';
+import logger from '../utils/logger';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -18,7 +18,24 @@ const SupportScreen = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 bg-gray-50 rounded-2xl">
           <Icon name="arrow-back-ios" size={20} color="#1e3a8a" />
         </TouchableOpacity>
-        <Text className="text-xl font-black text-blue-900 ml-4">Help & Support</Text>
+        <TouchableOpacity 
+          onLongPress={async () => {
+            try {
+              const path = logger.getLogFilePath();
+              await Share.share({
+                title: 'App Logs',
+                url: `file://${path}`,
+                message: 'Sharing Hanumant Dairy Debug Logs',
+              });
+            } catch (err) {
+              Alert.alert('Export Error', 'Could not access the log file.');
+            }
+          }}
+          delayLongPress={3000}
+          activeOpacity={1}
+        >
+          <Text className="text-xl font-black text-blue-900 ml-4">Help & Support</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView className="p-6">
