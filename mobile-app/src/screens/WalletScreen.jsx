@@ -12,8 +12,8 @@ import {
   StatusBar,
 } from 'react-native';
 import RazorpayCheckout from 'react-native-razorpay';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import LinearGradient from 'react-native-linear-gradient';
+import Icon from '@expo/vector-icons/MaterialIcons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { walletAPI } from '../utils/api';
 import { RAZORPAY_KEY_ID } from '@env';
@@ -77,6 +77,40 @@ const WalletScreen = ({ navigation }) => {
       },
       theme: { color: '#1e3a8a' }
     };
+
+    if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') {
+      Alert.alert(
+        'Testing in Expo Go',
+        'Razorpay Payment Gateway requires a custom native build and is not available in Expo Go. Would you like to simulate a successful payment for testing?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Simulate Success',
+            onPress: async () => {
+              setIsAddingMoney(true);
+              try {
+                const response = await walletAPI.addMoney({
+                  amount,
+                  description: 'Recharge (Simulated)',
+                  paymentId: 'pay_simulated_' + Math.random().toString(36).substring(7)
+                });
+                
+                setBalance(response.data.balance);
+                setAmountToAdd('');
+                Alert.alert('Success (Simulated)', `₹${amount} added successfully to your wallet!`);
+                fetchWalletData();
+              } catch (error) {
+                console.error('Failed to sync payment with backend', error);
+                Alert.alert('Sync Error', "Could not update simulated balance.");
+              } finally {
+                setIsAddingMoney(false);
+              }
+            }
+          }
+        ]
+      );
+      return;
+    }
 
     RazorpayCheckout.open(options).then(async (data) => {
       setIsAddingMoney(true);

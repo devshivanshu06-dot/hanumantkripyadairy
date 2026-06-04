@@ -1,4 +1,28 @@
 {
-  "name": "milk",
-  "displayName": "Hanumant Diary"
+  "expo": {
+    "name": "Hanumant Kripa Diary",
+    "slug": "hanumant-kripa-diary",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/Logo1.png",
+    "userInterfaceStyle": "light",
+    "jsEngine": "hermes",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hanumantkripyadiary.app"
+    },
+    "android": {
+      "package": "com.hanumantkripyadiary.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/Logo1.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/Logo1.png"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
 }

@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, ScrollView, Linking, Share, Alert } from 'react-native';
 import logger from '../utils/logger';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from '@expo/vector-icons/MaterialIcons';
 
 const SupportScreen = ({ navigation }) => {
   const openWhatsApp = () => {

@@ -11,12 +11,11 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from '@expo/vector-icons/MaterialIcons';
 import { authAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import Geolocation from 'react-native-geolocation-service';
+import * as Location from 'expo-location';
 import { GOOGLE_MAPS_API_KEY } from '@env';
-import { PermissionsAndroid } from 'react-native';
 
 const SignupScreen = ({ navigation, route }) => {
   const { token, user: initialUser } = route.params;
@@ -35,13 +34,12 @@ const SignupScreen = ({ navigation, route }) => {
       let locationData = null;
       
       // Attempt to get quick location for prefilling
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          const position = await new Promise((resolve, reject) => {
-            Geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 });
-          }).catch(() => null);
-          
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const position = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
           if (position) {
             locationData = {
               latitude: position.coords.latitude,
@@ -49,6 +47,8 @@ const SignupScreen = ({ navigation, route }) => {
             };
           }
         }
+      } catch (e) {
+        console.warn('Could not fetch location for signup:', e);
       }
 
       const response = await authAPI.updateProfile(token, { 

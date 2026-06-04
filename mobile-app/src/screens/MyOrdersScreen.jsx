@@ -11,8 +11,8 @@ import {
   StatusBar,
   Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import LinearGradient from 'react-native-linear-gradient';
+import Icon from '@expo/vector-icons/MaterialIcons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { orderAPI, subscriptionAPI } from '../utils/api';
 
 const MyOrdersScreen = ({ navigation, route }) => {

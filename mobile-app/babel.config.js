@@ -6,7 +6,6 @@ module.exports = function (api) {
       moduleName: '@env',
       path: '.env',
     }],
-    'nativewind/babel',
     'react-native-reanimated/plugin',
   ];
 
@@ -15,7 +14,10 @@ module.exports = function (api) {
   }
 
   return {
-    presets: ['module:@react-native/babel-preset'],
+    presets: [
+      ["babel-preset-expo", { jsxImportSource: "nativewind" }],
+      "nativewind/babel",
+    ],
     plugins,
   };
 };

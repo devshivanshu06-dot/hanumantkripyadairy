@@ -12,11 +12,11 @@ import {
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import LinearGradient from 'react-native-linear-gradient';
+import Icon from '@expo/vector-icons/MaterialIcons';
+import { LinearGradient } from 'expo-linear-gradient';
 import YoutubePlayer from 'react-native-youtube-iframe';
-import Geolocation from '@react-native-community/geolocation';
-import { PermissionsAndroid, Platform, Alert } from 'react-native';
+import * as Location from 'expo-location';
+import { Platform, Alert } from 'react-native';
 import { GOOGLE_MAPS_API_KEY } from '@env';
 import { productAPI, subscriptionAPI, bannerAPI, customerAPI, walletAPI, orderAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -60,106 +60,31 @@ const HomeScreen = ({ navigation }) => {
     };
   }, []);
 
-  const requestLocationPermission = async () => {
-    if (Platform.OS === 'ios') {
-      const status = await Geolocation.requestAuthorization('whenInUse');
-      return status === 'granted';
-    }
-    try {
-      const granted = await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-      ]);
-
-      return (
-        granted['android.permission.ACCESS_FINE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED ||
-        granted['android.permission.ACCESS_COARSE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED
-      );
-    } catch (err) {
-      console.warn(err);
-      return false;
-    }
-  };
-
   const handleGetCurrentLocation = async () => {
     try {
       logger.info('HomeScreen: handleGetCurrentLocation Start');
-      const hasPermission = await requestLocationPermission();
-      logger.info('HomeScreen: Permission result', { hasPermission });
-      if (!hasPermission) {
-        setIsDetectingLocation(false);
-        return;
-      }
-
-      if (!Geolocation) {
-        logger.error('HomeScreen: Geolocation module not found');
-        setIsDetectingLocation(false);
-        return;
-      }
-
       setIsDetectingLocation(true);
       setLocationError(null);
 
-      if (Platform.OS === 'android') {
-        Geolocation.setRNConfiguration({
-          skipPermissionRequests: true,
-          locationProvider: 'playServices',
-        });
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      logger.info('HomeScreen: Permission result', { status });
+      if (status !== 'granted') {
+        setIsDetectingLocation(false);
+        setLocationError('Permission to access location was denied');
+        return;
       }
 
-      const getPosition = (options) =>
-        new Promise((resolve, reject) => {
-          Geolocation.getCurrentPosition(resolve, reject, options);
-        });
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
 
-      try {
-        const position = await getPosition({
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 10000,
-        });
-
-        const { latitude, longitude } = position.coords;
-        logger.info('HomeScreen: GPS Coords Found', { lat: latitude, lng: longitude });
-        fetchAddressFromCoords(latitude, longitude);
-      } catch (primaryError) {
-        const shouldFallbackToNetwork =
-          Platform.OS === 'android' &&
-          (primaryError?.code === 2 || primaryError?.code === 3);
-
-        if (!shouldFallbackToNetwork) {
-          logger.warn('HomeScreen: GPS Error Callback', primaryError);
-          setIsDetectingLocation(false);
-          setLocationError(primaryError?.message || 'GPS failed');
-          return;
-        }
-
-        try {
-          if (Platform.OS === 'android') {
-            Geolocation.setRNConfiguration({
-              skipPermissionRequests: true,
-              locationProvider: 'android',
-            });
-          }
-
-          const fallbackPosition = await getPosition({
-            enableHighAccuracy: false,
-            timeout: 20000,
-            maximumAge: 30000,
-          });
-
-          const { latitude, longitude } = fallbackPosition.coords;
-          logger.info('HomeScreen: Android fallback location found', { lat: latitude, lng: longitude });
-          fetchAddressFromCoords(latitude, longitude);
-        } catch (fallbackError) {
-          logger.warn('HomeScreen: Android fallback GPS Error', fallbackError);
-          setIsDetectingLocation(false);
-          setLocationError(fallbackError?.message || 'GPS failed');
-        }
-      }
+      const { latitude, longitude } = position.coords;
+      logger.info('HomeScreen: GPS Coords Found', { lat: latitude, lng: longitude });
+      fetchAddressFromCoords(latitude, longitude);
     } catch (err) {
-      logger.error('HomeScreen: Location detection crashed native-side', err);
+      logger.error('HomeScreen: Location detection crashed', err);
       setIsDetectingLocation(false);
+      setLocationError(err?.message || 'GPS failed');
     }
   };
 

@@ -14,9 +14,9 @@ import {
   Modal,
   Dimensions
 } from 'react-native';
-import Geolocation from 'react-native-geolocation-service';
+import * as Location from 'expo-location';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import Icon from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from '../context/AuthContext';
 import { addressAPI } from '../utils/api';
 import { GOOGLE_MAPS_API_KEY } from '@env';
@@ -26,9 +26,6 @@ const { width, height } = Dimensions.get('window');
 
 if (Platform.OS === 'android' && !MapView) {
   console.warn('MapView native module is NOT available on this device');
-}
-if (!Geolocation) {
-  console.warn('Geolocation native module is NOT available on this device');
 }
 
 const AddressScreen = ({ navigation, route }) => {
@@ -65,27 +62,6 @@ const AddressScreen = ({ navigation, route }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-
-  const requestLocationPermission = async () => {
-    if (Platform.OS === 'ios') {
-      Geolocation.requestAuthorization();
-      return true;
-    }
-    try {
-      const granted = await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-      ]);
-
-      return (
-        granted['android.permission.ACCESS_FINE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED ||
-        granted['android.permission.ACCESS_COARSE_LOCATION'] === PermissionsAndroid.RESULTS.GRANTED
-      );
-    } catch (err) {
-      console.warn(err);
-      return false;
-    }
-  };
 
   // Pincode to City/State effect
   useEffect(() => {
@@ -236,96 +212,36 @@ const AddressScreen = ({ navigation, route }) => {
 
   const handleGetCurrentLocation = async (silent = false) => {
     try {
-      if (!Geolocation || typeof Geolocation.getCurrentPosition !== 'function') {
-        logger.error('AddressScreen: Geolocation library is NULL or invalid');
-        if (!silent) Alert.alert("Error", "GPS module is currently unavailable. Please try again or use the search bar.");
-        return;
-      }
-
       setFetchingLocation(true);
-
-      if (Platform.OS === 'android') {
-        Geolocation.setRNConfiguration({
-          skipPermissionRequests: true,
-          locationProvider: 'playServices',
-        });
-      }
       
-      const hasPermission = await requestLocationPermission();
-      if (!hasPermission) {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
         setFetchingLocation(false);
         if (!silent) Alert.alert("Permission Error", "Location permission denied. Please enable it in settings.");
         return;
       }
 
-      const getPosition = (options) =>
-        new Promise((resolve, reject) => {
-          Geolocation.getCurrentPosition(resolve, reject, options);
-        });
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
 
-      const applyPosition = (position) => {
-        logger.info('AddressScreen: GPS Success', { lat: position.coords.latitude, lng: position.coords.longitude });
-        const { latitude, longitude } = position.coords;
-        setCoordinates({ latitude, longitude });
-        setMapRegion(prev => ({ ...prev, latitude, longitude }));
+      logger.info('AddressScreen: GPS Success', { lat: position.coords.latitude, lng: position.coords.longitude });
+      const { latitude, longitude } = position.coords;
+      setCoordinates({ latitude, longitude });
+      setMapRegion(prev => ({ ...prev, latitude, longitude }));
 
-        setFormData(prev => ({
-          ...prev,
-          addressLine1: '',
-          city: '',
-          pincode: ''
-        }));
+      setFormData(prev => ({
+        ...prev,
+        addressLine1: '',
+        city: '',
+        pincode: ''
+      }));
 
-        fetchAddressFromCoordinates(latitude, longitude);
-        setFetchingLocation(false);
+      fetchAddressFromCoordinates(latitude, longitude);
+      setFetchingLocation(false);
 
-        if (!silent) {
-          Alert.alert('Success', 'Location captured! You can now Confirm & Save.');
-        }
-      };
-
-      try {
-        const position = await getPosition({
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 10000,
-        });
-        applyPosition(position);
-      } catch (primaryError) {
-        const shouldFallbackToNetwork =
-          Platform.OS === 'android' &&
-          (primaryError?.code === 2 || primaryError?.code === 3);
-
-        if (!shouldFallbackToNetwork) {
-          logger.warn('AddressScreen: GPS Error Callback', primaryError);
-          setFetchingLocation(false);
-          if (!silent) {
-            Alert.alert('Location Error', primaryError?.message || 'Failed to get location.');
-          }
-          return;
-        }
-
-        try {
-          if (Platform.OS === 'android') {
-            Geolocation.setRNConfiguration({
-              skipPermissionRequests: true,
-              locationProvider: 'android',
-            });
-          }
-
-          const fallbackPosition = await getPosition({
-            enableHighAccuracy: false,
-            timeout: 20000,
-            maximumAge: 30000,
-          });
-          applyPosition(fallbackPosition);
-        } catch (fallbackError) {
-          logger.warn('AddressScreen: Android fallback GPS Error', fallbackError);
-          setFetchingLocation(false);
-          if (!silent) {
-            Alert.alert('Location Error', fallbackError?.message || 'Failed to get location.');
-          }
-        }
+      if (!silent) {
+        Alert.alert('Success', 'Location captured! You can now Confirm & Save.');
       }
     } catch (err) {
       logger.error('AddressScreen: handleGetCurrentLocation Crash', err);
@@ -339,14 +255,15 @@ const AddressScreen = ({ navigation, route }) => {
   const handleOpenMap = async () => {
     setIsOpeningMap(true);
     try {
-      if (!Geolocation || typeof Geolocation.getCurrentPosition !== 'function') {
-        logger.error('AddressScreen: handleOpenMap Geolocation library is NULL');
-        setShowMapModal(true);
+      logger.info('AddressScreen: handleOpenMap Start');
+      
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
         setIsOpeningMap(false);
+        setShowMapModal(true);
         return;
       }
       
-      logger.info('AddressScreen: handleOpenMap Start');
       // Use existing coords if we have them
       if (coordinates.latitude) {
         setMapRegion({
@@ -361,33 +278,27 @@ const AddressScreen = ({ navigation, route }) => {
       }
 
       // Quick GPS capture for map
-      Geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          logger.info('AddressScreen: Map GPS Success', { latitude, longitude });
-          
-          const newRegion = {
-            latitude,
-            longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005
-          };
-          
-          setCoordinates({ latitude, longitude });
-          setMapRegion(newRegion);
-          setShowMapModal(true);
-          setIsOpeningMap(false);
-          
-          // Reverse geocode this new spot too
-          fetchAddressFromCoordinates(latitude, longitude);
-        },
-        (error) => {
-          logger.warn('AddressScreen: Map GPS failed, opening at last known or default', error);
-          setShowMapModal(true);
-          setIsOpeningMap(false);
-        },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
-      );
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      
+      const { latitude, longitude } = position.coords;
+      logger.info('AddressScreen: Map GPS Success', { latitude, longitude });
+      
+      const newRegion = {
+        latitude,
+        longitude,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005
+      };
+      
+      setCoordinates({ latitude, longitude });
+      setMapRegion(newRegion);
+      setShowMapModal(true);
+      setIsOpeningMap(false);
+      
+      // Reverse geocode this new spot too
+      fetchAddressFromCoordinates(latitude, longitude);
     } catch (err) {
       setShowMapModal(true);
       setIsOpeningMap(false);

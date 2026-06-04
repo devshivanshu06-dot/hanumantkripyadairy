@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, Image, StyleSheet, Animated } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const Loader = ({ message = "Loading..." }) => {
   const [fadeAnim] = React.useState(new Animated.Value(0.4));
