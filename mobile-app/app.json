@@ -2,7 +2,7 @@
   "expo": {
     "name": "Hanumant Kripa Diary",
     "slug": "hanumant-kripa-diary",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/Logo1.png",
     "userInterfaceStyle": "light",
@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.hanumantkripyadiary.app",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/Logo1.png"
